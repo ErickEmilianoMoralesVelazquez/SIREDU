@@ -1,0 +1,34 @@
+# Node modules
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+
+# Directorios de producción o build (si aplicara)
+dist/
+build/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Archivos de cobertura de tests
+coverage/
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Otros
+npm-debug.log*
