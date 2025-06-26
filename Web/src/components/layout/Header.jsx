@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, Menu, X, User, LogIn } from "lucide-react";
+import { useAuth } from "../../context/AuthContext.jsx";
+import UserDropdown from "../ui/UserDropdown.jsx";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulación de estado de autenticación
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <header className="bg-emerald-700 text-white shadow-md">
@@ -29,12 +31,12 @@ export default function Header() {
               </svg>
             </div>
             <div>
-              <h1 className="font-bold text-xl">EcoUni</h1>
+              <h1 className="font-bold text-xl">SIREDU</h1>
               <p className="text-xs text-emerald-200">Consumo Responsable</p>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Navegación de escritorio */}
           <nav className="hidden md:flex items-center space-x-6">
             <Link
               to="/productos"
@@ -64,9 +66,9 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* User Actions */}
+          {/* Acciones de usuario en escritorio */}
           <div className="hidden md:flex items-center space-x-4">
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   to="/publicar"
@@ -74,13 +76,7 @@ export default function Header() {
                 >
                   Publicar Artículo
                 </Link>
-                <Link
-                  to="/perfil"
-                  className="flex items-center space-x-1 hover:text-emerald-200 transition-colors"
-                >
-                  <User className="h-5 w-5" />
-                  <span>Mi Perfil</span>
-                </Link>
+                <UserDropdown user={user} onLogout={logout} />
               </>
             ) : (
               <>
@@ -92,7 +88,7 @@ export default function Header() {
                   <span>Iniciar Sesión</span>
                 </Link>
                 <Link
-                  to="/registro"
+                  to="/login?mode=register"
                   className="bg-white text-emerald-700 px-4 py-1.5 rounded-full text-sm font-medium hover:bg-emerald-100 transition-colors"
                 >
                   Registrarse
@@ -101,7 +97,7 @@ export default function Header() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Botón menú móvil */}
           <button
             className="md:hidden text-white"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -114,7 +110,7 @@ export default function Header() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Menú móvil */}
         {isMenuOpen && (
           <div className="md:hidden mt-4 pb-4">
             <div className="flex items-center mb-4">
@@ -144,7 +140,7 @@ export default function Header() {
               >
                 Cómo Funciona
               </Link>
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <>
                   <Link
                     to="/publicar"
@@ -157,8 +153,18 @@ export default function Header() {
                     className="flex items-center space-x-1 hover:text-emerald-200 transition-colors"
                   >
                     <User className="h-5 w-5" />
-                    <span>Mi Perfil</span>
+                    <span>Mi Perfil ({user?.username || "Usuario"})</span>
                   </Link>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      logout();
+                    }}
+                    className="flex items-center space-x-1 hover:text-emerald-200 transition-colors text-left"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    <span>Cerrar Sesión</span>
+                  </button>
                 </>
               ) : (
                 <>
@@ -170,7 +176,7 @@ export default function Header() {
                     <span>Iniciar Sesión</span>
                   </Link>
                   <Link
-                    to="/registro"
+                    to="/login?mode=register"
                     className="bg-white text-emerald-700 px-4 py-2 rounded-full text-center text-sm font-medium hover:bg-emerald-100 transition-colors"
                   >
                     Registrarse
