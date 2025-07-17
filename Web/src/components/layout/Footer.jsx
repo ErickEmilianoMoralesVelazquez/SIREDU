@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Sobre EcoUni</h3>
+            <h3 className="text-lg font-semibold mb-4">Sobre SIREDU</h3>
             <p className="text-gray-300 text-sm">
               Plataforma digital universitaria para fomentar el consumo
               responsable, reciclaje y reutilización entre estudiantes.

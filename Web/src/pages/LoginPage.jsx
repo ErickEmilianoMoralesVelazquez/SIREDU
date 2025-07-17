@@ -1,10 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useToast } from "../hooks/useToast.js";
+import {
+  validateLoginForm,
+  validateRegisterForm,
+  validateFieldRealTime,
+  sanitizeInput,
+} from "../utils/validation.js";
+import { ButtonLoader } from "../components/ui/Loader.jsx";
 
 export default function LoginPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { login, register, isLoading, isAuthenticated } = useAuth();
+  const { showSuccess, showError } = useToast();
+
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -14,28 +28,147 @@ export default function LoginPage() {
     confirmPassword: "",
     acceptTerms: false,
   });
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  // Verificar si el parámetro mode=register está en la URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const mode = searchParams.get("mode");
+    if (mode === "register") {
+      setIsLogin(false);
+    }
+  }, [location.search]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const sanitizedValue =
+      type === "checkbox"
+        ? checked
+        : name === "name"
+          ? value // permitir espacios para el nombre
+          : sanitizeInput(value); // sanitizar el resto
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: sanitizedValue,
     }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+
+    // Validate field on blur
+    if (touched[name] || value) {
+      const error = validateFieldRealTime(name, value, formData);
+      setErrors((prev) => ({
+        ...prev,
+        [name]: error || "",
+      }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (isLogin) {
-      console.log("Login:", {
-        email: formData.email,
-        password: formData.password,
-      });
-      // Aquí iría la lógica de login
-    } else {
-      console.log("Register:", formData);
-      // Aquí iría la lógica de registro
+    // Validate form
+    const validation = isLogin
+      ? validateLoginForm(formData)
+      : validateRegisterForm(formData);
+
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      setTouched(
+        Object.keys(validation.errors).reduce(
+          (acc, key) => ({
+            ...acc,
+            [key]: true,
+          }),
+          {},
+        ),
+      );
+      return;
     }
+
+    try {
+      if (isLogin) {
+        const result = await login({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (result.success) {
+          showSuccess("¡Bienvenido! Has iniciado sesión correctamente");
+          navigate("/");
+        } else {
+          showError(result.error || "Error al iniciar sesión");
+        }
+      } else {
+        // Check terms acceptance
+        if (!formData.acceptTerms) {
+          setErrors({
+            acceptTerms: "Debes aceptar los términos y condiciones",
+          });
+          return;
+        }
+
+        const result = await register({
+          username: formData.name.split(" ")[0], // Use first name as username
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (result.success) {
+          showSuccess(
+            "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión",
+          );
+          setIsLogin(true);
+          setFormData({
+            email: formData.email,
+            password: "",
+            name: "",
+            confirmPassword: "",
+            acceptTerms: false,
+          });
+          setErrors({});
+          setTouched({});
+        } else {
+          showError(result.error || "Error al crear la cuenta");
+        }
+      }
+    } catch (error) {
+      showError(error.message || "Error inesperado");
+    }
+  };
+
+  const toggleMode = () => {
+    setIsLogin(!isLogin);
+    setErrors({});
+    setTouched({});
+    setFormData({
+      email: "",
+      password: "",
+      name: "",
+      confirmPassword: "",
+      acceptTerms: false,
+    });
   };
 
   return (
@@ -80,10 +213,18 @@ export default function LoginPage() {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors.name
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-emerald-500"
+                    }`}
                     placeholder="Ingresa tu nombre completo"
                   />
+                  {errors.name && touched.name && (
+                    <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                  )}
                 </div>
               )}
 
@@ -103,11 +244,19 @@ export default function LoginPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors.email
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-emerald-500"
+                    }`}
                     placeholder="tu.nombre@universidad.edu"
                   />
                 </div>
+                {errors.email && touched.email && (
+                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                )}
               </div>
 
               {/* Password */}
@@ -126,8 +275,13 @@ export default function LoginPage() {
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                      errors.password
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-emerald-500"
+                    }`}
                     placeholder="••••••••"
                   />
                   <button
@@ -142,6 +296,9 @@ export default function LoginPage() {
                     )}
                   </button>
                 </div>
+                {errors.password && touched.password && (
+                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                )}
               </div>
 
               {/* Confirm Password (solo en registro) */}
@@ -161,11 +318,21 @@ export default function LoginPage() {
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
+                      onBlur={handleBlur}
                       required
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                        errors.confirmPassword
+                          ? "border-red-300 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-emerald-500"
+                      }`}
                       placeholder="••••••••"
                     />
                   </div>
+                  {errors.confirmPassword && touched.confirmPassword && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -200,6 +367,11 @@ export default function LoginPage() {
                       política de privacidad
                     </Link>
                   </label>
+                  {errors.acceptTerms && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.acceptTerms}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -218,9 +390,19 @@ export default function LoginPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                disabled={isLoading}
+                className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                {isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
+                {isLoading ? (
+                  <>
+                    <ButtonLoader size="sm" color="white" />
+                    <span className="ml-2">
+                      {isLogin ? "Iniciando..." : "Creando cuenta..."}
+                    </span>
+                  </>
+                ) : (
+                  <span>{isLogin ? "Iniciar Sesión" : "Crear Cuenta"}</span>
+                )}
               </button>
             </form>
 
@@ -230,8 +412,9 @@ export default function LoginPage() {
                 {isLogin ? "¿No tienes una cuenta?" : "¿Ya tienes una cuenta?"}{" "}
                 <button
                   type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-emerald-600 font-medium hover:underline"
+                  onClick={toggleMode}
+                  disabled={isLoading}
+                  className="text-emerald-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isLogin ? "Regístrate" : "Inicia sesión"}
                 </button>
