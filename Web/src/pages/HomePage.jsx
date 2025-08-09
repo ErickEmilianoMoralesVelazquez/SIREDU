@@ -76,7 +76,7 @@ export default function HomePage() {
                   Explorar Artículos
                 </Link>
                 <Link
-                  to="/registro"
+                  to="/login?mode=register"
                   className="bg-transparent border-2 border-white px-6 py-3 rounded-full font-medium text-center hover:bg-white hover:text-emerald-700 transition-colors"
                 >
                   Crear Cuenta
@@ -95,7 +95,7 @@ export default function HomePage() {
       </section>
 
       {/* Categories Section */}
-      <section className="py-16 bg-gray-50">
+      <section id="categorias" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">
             Explora por Categorías
@@ -176,7 +176,7 @@ export default function HomePage() {
       </section>
 
       {/* How It Works */}
-      <section className="py-16 bg-emerald-50">
+      <section id="como-funciona" className="py-16 bg-emerald-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">
             ¿Cómo Funciona?
@@ -247,7 +247,7 @@ export default function HomePage() {
             en nuestra universidad.
           </p>
           <Link
-            to="/registro"
+            to="/login?mode=register"
             className="bg-emerald-600 text-white px-8 py-3 rounded-full font-medium text-lg hover:bg-emerald-700 transition-colors inline-block"
           >
             Crear Cuenta Ahora
