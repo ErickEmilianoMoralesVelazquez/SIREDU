@@ -43,8 +43,8 @@ const Item = sequelize.define(
       type: DataTypes.STRING(50),
       allowNull: false,
     },
-    type: {
-      type: DataTypes.STRING(50),
+    exchange_type: {
+      type: DataTypes.ENUM("venta", "renta", "prestamo"),
       allowNull: false,
     },
     created_at: {
