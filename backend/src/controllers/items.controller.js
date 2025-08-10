@@ -1,23 +1,21 @@
 import Item from "../models/Item.js";
 import User from "../models/User.js";
+import { Op } from "sequelize";
+import FavoritesService from "../services/favoritesService.js";
+import ItemsService from "../services/itemsService.js";
 
 export const getAllItems = async (req, res) => {
   try {
-    const items = await Item.findAll({
-      include: [
-        {
-          model: User,
-          attributes: ["username", "email"],
-        },
-      ],
-      order: [["created_at", "DESC"]],
-    });
+    const userId = req.user?.id_user || null;
+    const result = await ItemsService.getItems(req.query, userId);
 
     res.status(200).json({
       success: true,
-      data: items,
+      data: result.items,
+      pagination: result.pagination
     });
   } catch (error) {
+    console.error("Error getting items:", error);
     res.status(500).json({
       success: false,
       message: "Error al obtener los artículos",
@@ -29,15 +27,9 @@ export const getAllItems = async (req, res) => {
 export const getItemById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id_user || null;
 
-    const item = await Item.findByPk(id, {
-      include: [
-        {
-          model: User,
-          attributes: ["username", "email"],
-        },
-      ],
-    });
+    const item = await ItemsService.getItemById(id, userId);
 
     if (!item) {
       return res.status(404).json({
@@ -51,6 +43,7 @@ export const getItemById = async (req, res) => {
       data: item,
     });
   } catch (error) {
+    console.error("Error getting item by id:", error);
     res.status(500).json({
       success: false,
       message: "Error al obtener el artículo",
@@ -116,6 +109,44 @@ export const createItem = async (req, res) => {
   }
 };
 
+// ===== OBTENER CATEGORÍAS DISPONIBLES =====
+export const getCategories = async (req, res) => {
+  try {
+    const categories = await ItemsService.getCategories();
+    
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    console.error("Error getting categories:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener las categorías",
+      error: error.message,
+    });
+  }
+};
+
+// ===== OBTENER TIPOS DISPONIBLES =====
+export const getTypes = async (req, res) => {
+  try {
+    const types = await ItemsService.getTypes();
+    
+    res.status(200).json({
+      success: true,
+      data: types,
+    });
+  } catch (error) {
+    console.error("Error getting types:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener los tipos",
+      error: error.message,
+    });
+  }
+};
+
 /*
 EJEMPLO DE CÓMO SUBIR UN ARTÍCULO CON IMÁGENES:
 
@@ -128,7 +159,7 @@ Form Data:
 - description: "Descripción detallada del artículo"
 - price: 100.50 (opcional, número)
 - category: "Categoría del artículo"
-- exchange_type: "venta" | "renta" | "prestamo"
+- exchange_type: "Venta" | "Préstamo" | "Regalo"
 - status: "available" (opcional, por defecto "available")
 - picture1: File1 (opcional, imagen para posición 1)
 - picture2: File2 (opcional, imagen para posición 2)  
@@ -141,7 +172,7 @@ curl -X POST http://localhost:3001/items \
   -F "description=Descripción del artículo" \
   -F "price=150.00" \
   -F "category=Electrónicos" \
-  -F "exchange_type=venta" \
+  -F "exchange_type=Venta" \
   -F "picture1=@/path/to/image1.jpg" \
   -F "picture3=@/path/to/image3.jpg"
 
@@ -155,7 +186,7 @@ Respuesta exitosa:
     "description": "Descripción del artículo",
     "price": "150.00",
     "category": "Electrónicos",
-    "exchange_type": "venta",
+    "exchange_type": "Venta",
     "status": "available",
     "picture1": "1234567890-image1.jpg",
     "picture2": "1234567891-image2.jpg",
