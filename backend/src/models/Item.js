@@ -35,9 +35,9 @@ const Item = sequelize.define(
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("available", "sold", "reserved"),
+      type: DataTypes.ENUM("available", "sold", "reserved", "pending", "approved", "rejected", "flagged"),
       allowNull: false,
-      defaultValue: "available",
+      defaultValue: "pending",
     },
     category: {
       type: DataTypes.STRING(50),
@@ -58,6 +58,22 @@ const Item = sequelize.define(
         model: User,
         key: "id_user",
       },
+    },
+    adminNotes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    reviewedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: User,
+        key: "id_user",
+      },
+    },
+    reviewedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
