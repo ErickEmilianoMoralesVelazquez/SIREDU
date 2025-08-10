@@ -7,7 +7,7 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("Conectado a la base de datos");
 
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ force: false });
     console.log("Tablas sincronizadas");
 
     const PORT = process.env.PORT || 3001;
