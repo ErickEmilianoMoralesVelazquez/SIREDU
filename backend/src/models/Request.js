@@ -31,6 +31,10 @@ const Request = sequelize.define(
         key: "id_item",
       },
     },
+    adminNotes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     tableName: "requests",
