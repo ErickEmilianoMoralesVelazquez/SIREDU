@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import {
@@ -53,15 +53,15 @@ export default function LoginPage() {
       type === "checkbox"
         ? checked
         : name === "name"
-          ? value // permitir espacios para el nombre
-          : sanitizeInput(value); // sanitizar el resto
+        ? value // permitir espacios para el nombre
+        : sanitizeInput(value); // sanitizar el resto
 
     setFormData((prev) => ({
       ...prev,
       [name]: sanitizedValue,
     }));
 
-    // Clear error when user starts typing
+    // Limpiar error al empezar a escribir
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -74,9 +74,14 @@ export default function LoginPage() {
     const { name, value } = e.target;
     setTouched((prev) => ({ ...prev, [name]: true }));
 
-    // Validate field on blur
+    // Validación por campo (onBlur) con CONTEXTO
     if (touched[name] || value) {
-      const error = validateFieldRealTime(name, value, formData);
+      const error = validateFieldRealTime(
+        name,
+        value,
+        formData,
+        { context: mode } // <- clave: en login NO aplica fortaleza de contraseña
+      );
       setErrors((prev) => ({
         ...prev,
         [name]: error || "",
@@ -88,7 +93,6 @@ export default function LoginPage() {
     e.preventDefault();
 
     if (mode === "recovery") {
-      // Simular envío de recuperación de contraseña
       showSuccess("Se ha enviado un enlace de recuperación a tu correo electrónico");
       setMode("login");
       setFormData({ email: "", password: "", name: "", confirmPassword: "", acceptTerms: false });
@@ -97,21 +101,19 @@ export default function LoginPage() {
       return;
     }
 
-    // Validate form
-    const validation = mode === "login"
-      ? validateLoginForm(formData)
-      : validateRegisterForm(formData);
+    // Validación del formulario completo
+    const validation =
+      mode === "login"
+        ? validateLoginForm(formData)         // usa context: 'login' internamente
+        : validateRegisterForm(formData);     // usa context: 'register' internamente
 
     if (!validation.isValid) {
       setErrors(validation.errors);
       setTouched(
         Object.keys(validation.errors).reduce(
-          (acc, key) => ({
-            ...acc,
-            [key]: true,
-          }),
-          {},
-        ),
+          (acc, key) => ({ ...acc, [key]: true }),
+          {}
+        )
       );
       return;
     }
@@ -126,7 +128,7 @@ export default function LoginPage() {
         if (result.success) {
           showSuccess("¡Bienvenido! Has iniciado sesión correctamente");
           setTimeout(() => {
-            if (result.user && result.user.role === 'admin') {
+            if (result.user && result.user.role === "admin") {
               navigate("/admin");
             } else {
               navigate("/");
@@ -145,18 +147,17 @@ export default function LoginPage() {
         }
 
         const result = await register({
-          username: formData.name.split(" ")[0], // Use first name as username
+          username: formData.name.split(" ")[0], // primer nombre como username
           name: formData.name,
           email: formData.email,
           password: formData.password,
         });
 
         if (result.success) {
-          showSuccess(
-            "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión",
-          );
+          showSuccess("¡Cuenta creada exitosamente! Ahora puedes iniciar sesión");
           setTimeout(() => {
-            setIsLogin(true);
+            // Volver a login reutilizando el email
+            setMode("login");
             setFormData({
               email: formData.email,
               password: "",
@@ -256,12 +257,8 @@ export default function LoginPage() {
 
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-6 bg-emerald-700 text-white text-center">
-            <h1 className="text-2xl font-bold">
-              {getTitle()}
-            </h1>
-            <p className="text-emerald-100">
-              {getSubtitle()}
-            </p>
+            <h1 className="text-2xl font-bold">{getTitle()}</h1>
+            <p className="text-emerald-100">{getSubtitle()}</p>
           </div>
 
           <div className="p-6">
@@ -352,6 +349,7 @@ export default function LoginPage() {
                           : "border-gray-300 focus:ring-emerald-500"
                       }`}
                       placeholder="••••••••"
+                      autoComplete={mode === "login" ? "current-password" : "new-password"}
                     />
                     <button
                       type="button"
@@ -418,29 +416,18 @@ export default function LoginPage() {
                     required
                     className="mt-1 mr-2"
                   />
-                  <label
-                    htmlFor="acceptTerms"
-                    className="text-sm text-gray-600"
-                  >
+                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
                     Acepto los{" "}
-                    <Link
-                      to="/terminos"
-                      className="text-emerald-600 hover:underline"
-                    >
+                    <Link to="/terminos" className="text-emerald-600 hover:underline">
                       términos y condiciones
                     </Link>{" "}
                     y la{" "}
-                    <Link
-                      to="/privacidad"
-                      className="text-emerald-600 hover:underline"
-                    >
+                    <Link to="/privacidad" className="text-emerald-600 hover:underline">
                       política de privacidad
                     </Link>
                   </label>
                   {errors.acceptTerms && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {errors.acceptTerms}
-                    </p>
+                    <p className="mt-1 text-sm text-red-600">{errors.acceptTerms}</p>
                   )}
                 </div>
               )}
@@ -467,9 +454,7 @@ export default function LoginPage() {
                 {isLoading ? (
                   <>
                     <ButtonLoader size="sm" color="white" />
-                    <span className="ml-2">
-                      {getLoadingText()}
-                    </span>
+                    <span className="ml-2">{getLoadingText()}</span>
                   </>
                 ) : (
                   <span>{getSubmitButtonText()}</span>
@@ -492,7 +477,7 @@ export default function LoginPage() {
                   </button>
                 </p>
               )}
-              
+
               {mode === "register" && (
                 <p className="text-gray-600">
                   ¿Ya tienes una cuenta?{" "}
