@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart,
   PieChart,
@@ -14,93 +14,91 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { adminService } from "../services/adminService.js";
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [stats, setStats] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Datos de ejemplo para estadísticas
-  const stats = [
-    {
-      label: "Usuarios Registrados",
-      value: 523,
-      icon: Users,
-      color: "bg-blue-100 text-blue-600",
-    },
-    {
-      label: "Artículos Activos",
-      value: 1248,
-      icon: Package,
-      color: "bg-emerald-100 text-emerald-600",
-    },
-    {
-      label: "Artículos Donados",
-      value: 342,
-      icon: Gift,
-      color: "bg-purple-100 text-purple-600",
-    },
-    {
-      label: "Pendientes de Revisión",
-      value: 15,
-      icon: Clock,
-      color: "bg-amber-100 text-amber-600",
-    },
-  ];
+  // Cargar datos del dashboard
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
 
-  // Datos de ejemplo para productos
-  const products = [
-    {
-      id: 1,
-      title: "Libro de Cálculo Avanzado",
-      category: "Libros",
-      type: "Venta",
-      price: 250,
-      owner: "Carlos Méndez",
-      status: "active",
-      createdAt: "2023-05-15",
-    },
-    {
-      id: 2,
-      title: "Laptop Dell Inspiron",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 4500,
-      owner: "Ana Gutiérrez",
-      status: "active",
-      createdAt: "2023-05-14",
-    },
-    {
-      id: 3,
-      title: "Sudadera Universitaria",
-      category: "Ropa",
-      type: "Regalo",
-      price: 0,
-      owner: "Miguel Torres",
-      status: "active",
-      createdAt: "2023-05-13",
-    },
-    {
-      id: 4,
-      title: "Calculadora Científica",
-      category: "Útiles",
-      type: "Préstamo",
-      price: 0,
-      owner: "Laura Sánchez",
-      status: "inactive",
-      createdAt: "2023-05-12",
-    },
-    {
-      id: 5,
-      title: "Libro de Programación en Python",
-      category: "Libros",
-      type: "Venta",
-      price: 180,
-      owner: "Roberto Díaz",
-      status: "active",
-      createdAt: "2023-05-11",
-    },
-  ];
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const statsData = await adminService.getGeneralStats();
+      
+      // Transformar datos de estadísticas al formato esperado por el frontend
+      const transformedStats = [
+        {
+          label: "Usuarios Registrados",
+          value: statsData.general.totalUsers,
+          icon: Users,
+          color: "bg-blue-100 text-blue-600",
+        },
+        {
+          label: "Artículos Activos",
+          value: statsData.general.totalItems,
+          icon: Package,
+          color: "bg-emerald-100 text-emerald-600",
+        },
+        {
+          label: "Artículos Donados",
+          value: statsData.general.soldItems,
+          icon: Gift,
+          color: "bg-purple-100 text-purple-600",
+        },
+        {
+          label: "Pendientes de Revisión",
+          value: statsData.general.pendingItems,
+          icon: Clock,
+          color: "bg-amber-100 text-amber-600",
+        },
+      ];
+      
+      setStats(transformedStats);
+      
+      // Cargar productos
+      const itemsData = await adminService.getItems({ page: 1, limit: 10 });
+      const transformedProducts = itemsData.items.map(item => adminService.transformItemData(item));
+      setProducts(transformedProducts);
+      
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Error al cargar los datos del dashboard');
+      // Usar datos de ejemplo si hay error
+      const mockData = adminService.getMockData();
+      setStats(mockData.stats);
+      setProducts(mockData.products);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para cargar productos con filtros
+  const loadProducts = async (filters = {}) => {
+    try {
+      const itemsData = await adminService.getItems({
+        page: currentPage,
+        limit: 10,
+        ...filters
+      });
+      const transformedProducts = itemsData.items.map(item => adminService.transformItemData(item));
+      setProducts(transformedProducts);
+    } catch (err) {
+      console.error('Error loading products:', err);
+      // Usar datos de ejemplo si hay error
+      const mockData = adminService.getMockData();
+      setProducts(mockData.products);
+    }
+  };
 
   // Filtrar productos por término de búsqueda
   const filteredProducts = products.filter(
@@ -109,6 +107,13 @@ export default function AdminDashboardPage() {
       product.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.category.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Cargar productos cuando cambie la búsqueda
+  useEffect(() => {
+    if (activeTab === "products") {
+      loadProducts({ search: searchTerm });
+    }
+  }, [searchTerm, activeTab]);
 
   // Paginación
   const productsPerPage = 10;
@@ -132,6 +137,18 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Panel de Administración</h1>
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md mb-8">
@@ -148,7 +165,10 @@ export default function AdminDashboardPage() {
               Dashboard
             </button>
             <button
-              onClick={() => setActiveTab("products")}
+              onClick={() => {
+                setActiveTab("products");
+                loadProducts();
+              }}
               className={`px-6 py-4 font-medium text-sm flex items-center ${
                 activeTab === "products"
                   ? "border-b-2 border-emerald-500 text-emerald-600"
