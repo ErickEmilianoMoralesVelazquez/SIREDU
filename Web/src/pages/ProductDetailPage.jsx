@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import {
   ChevronLeft,
@@ -9,6 +9,10 @@ import {
   Share2,
   AlertCircle,
   QrCode,
+  BookOpen,
+  Building2,
+  User as UserIcon,
+  CalendarClock,
 } from "lucide-react";
 import InterestModal from "../components/products/InterestModal";
 
@@ -17,15 +21,16 @@ export default function ProductDetailPage() {
   const [currentImage, setCurrentImage] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [isFav, setIsFav] = useState(false);
 
-  // Datos de ejemplo para el producto
+  // Datos de ejemplo para el producto (placeholder)
   const product = {
     id: 1,
     title: "Libro de Cálculo Avanzado - Tercera Edición",
     description:
       "Libro de cálculo avanzado en excelente estado. Usado durante un semestre para la materia de Cálculo III. Tiene algunas anotaciones a lápiz que pueden ser borradas. Ideal para estudiantes de ingeniería o ciencias exactas.",
     category: "Libros",
-    type: "Venta",
+    type: "Venta", // "Venta" | "Préstamo" | "Regalo"
     price: 250,
     images: [
       "/placeholder.svg?height=500&width=500",
@@ -38,18 +43,7 @@ export default function ProductDetailPage() {
     condition: "Usado - Buen estado",
   };
 
-  // Función para navegar entre imágenes
-  const navigateImages = (direction) => {
-    if (direction === "next") {
-      setCurrentImage((prev) => (prev + 1) % product.images.length);
-    } else {
-      setCurrentImage(
-        (prev) => (prev - 1 + product.images.length) % product.images.length,
-      );
-    }
-  };
-
-  // Función para formatear la fecha
+  // -------- Utilidades de formato --------
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("es-MX", {
@@ -59,75 +53,155 @@ export default function ProductDetailPage() {
     }).format(date);
   };
 
-  // Función para determinar el color de fondo según el tipo de disponibilidad
+  const formatPrice = (n) =>
+    new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+      maximumFractionDigits: 2,
+    }).format(n);
+
   const getTypeBadgeColor = (type) => {
     switch (type) {
       case "Venta":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-900 ring-1 ring-blue-200";
       case "Préstamo":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
       case "Regalo":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-900 ring-1 ring-green-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-900 ring-1 ring-gray-200";
     }
+  };
+
+  // -------- Lógica UI --------
+  const hasMultipleImages = product.images && product.images.length > 1;
+  const totalImages = product.images?.length || 0;
+
+  const navigateImages = useCallback(
+    (direction) => {
+      if (!hasMultipleImages) return;
+      if (direction === "next") {
+        setCurrentImage((prev) => (prev + 1) % totalImages);
+      } else {
+        setCurrentImage((prev) => (prev - 1 + totalImages) % totalImages);
+      }
+    },
+    [hasMultipleImages, totalImages]
+  );
+
+  const handleKeyNav = useCallback(
+    (e) => {
+      if (e.key === "ArrowRight") navigateImages("next");
+      if (e.key === "ArrowLeft") navigateImages("prev");
+      if (e.key === "Escape") setShowQR(false);
+    },
+    [navigateImages]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyNav);
+    return () => window.removeEventListener("keydown", handleKeyNav);
+  }, [handleKeyNav]);
+
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
+  const handleShare = async () => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    try {
+      if (canShare) await navigator.share({ title: product.title, url });
+      else await navigator.clipboard.writeText(url);
+    } catch {}
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Product Images */}
-        <div className="lg:w-1/2">
-          <div className="relative bg-gray-100 rounded-xl overflow-hidden">
-            <img
-              src={product.images[currentImage] || "/placeholder.svg"}
-              alt={`${product.title} - Imagen ${currentImage + 1}`}
-              className="w-full h-96 object-contain"
-            />
+      {/* Breadcrumb */}
+      <nav className="mb-5 text-sm text-gray-500" aria-label="Breadcrumb">
+        <ol className="flex items-center gap-2">
+          <li className="hover:text-gray-700 transition-colors">Inicio</li>
+          <li className="opacity-50">/</li>
+          <li className="hover:text-gray-700 transition-colors">{product.category}</li>
+          <li className="opacity-50">/</li>
+          <li className="text-gray-700 line-clamp-1">{product.title}</li>
+        </ol>
+      </nav>
 
-            {product.images.length > 1 && (
-              <>
-                <button
-                  onClick={() => navigateImages("prev")}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 hover:bg-white transition-colors"
-                  aria-label="Imagen anterior"
-                >
-                  <ChevronLeft className="h-6 w-6" />
-                </button>
-                <button
-                  onClick={() => navigateImages("next")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 hover:bg-white transition-colors"
-                  aria-label="Imagen siguiente"
-                >
-                  <ChevronRight className="h-6 w-6" />
-                </button>
-              </>
-            )}
+      <div className="flex flex-col lg:flex-row gap-10">
+        {/* Galería */}
+        <div className="lg:w-1/2">
+          <div className="relative rounded-2xl bg-gray-50 overflow-hidden shadow-sm">
+            {/* Overlay degradado inferior para legibilidad */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/80 to-transparent" />
 
             <div
-              className={`absolute top-4 right-4 ${getTypeBadgeColor(product.type)} px-3 py-1 rounded-full text-sm font-medium`}
+              id="product-image"
+              className="relative aspect-[4/3] w-full max-h-[320px]"
             >
-              {product.type}
+              <img
+                key={currentImage} // fuerza fade al cambiar
+                src={product.images[currentImage] || "/placeholder.svg"}
+                alt={`${product.title} - Imagen ${currentImage + 1} de ${totalImages}`}
+                className="absolute inset-0 w-full h-full object-contain transition-opacity duration-200 ease-out"
+                loading="eager"
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
+              />
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={() => navigateImages("prev")}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur rounded-full p-2 hover:bg-white transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    aria-label="Imagen anterior"
+                    aria-controls="product-image"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={() => navigateImages("next")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur rounded-full p-2 hover:bg-white transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    aria-label="Imagen siguiente"
+                    aria-controls="product-image"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+
+                  {/* Indicador */}
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/85 text-gray-700 text-xs font-medium shadow-sm">
+                    {currentImage + 1} / {totalImages}
+                  </div>
+                </>
+              )}
+
+              {/* Badge de tipo */}
+              <div
+                className={`absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold ${getTypeBadgeColor(
+                  product.type
+                )}`}
+              >
+                {product.type}
+              </div>
             </div>
           </div>
 
-          {/* Thumbnails */}
-          {product.images.length > 1 && (
-            <div className="flex mt-4 space-x-2 overflow-x-auto pb-2">
+          {/* Miniaturas */}
+          {hasMultipleImages && (
+            <div className="mt-4 flex space-x-3 overflow-x-auto pb-1">
               {product.images.map((image, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentImage(index)}
-                  className={`w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
+                  aria-current={currentImage === index}
+                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border transition-all duration-200 hover:shadow-sm hover:-translate-y-px ${
                     currentImage === index
-                      ? "border-emerald-500"
-                      : "border-transparent"
+                      ? "border-emerald-500 ring-2 ring-emerald-200"
+                      : "border-gray-200"
                   }`}
                 >
                   <img
                     src={image || "/placeholder.svg"}
                     alt={`Miniatura ${index + 1}`}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 </button>
               ))}
@@ -135,105 +209,134 @@ export default function ProductDetailPage() {
           )}
         </div>
 
-        {/* Product Info */}
+        {/* Información */}
         <div className="lg:w-1/2">
           <div className="flex flex-col h-full">
-            <div className="mb-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-sm text-gray-500 uppercase">
-                    {product.category}
-                  </span>
-                  <h1 className="text-3xl font-bold mb-2">{product.title}</h1>
+            {/* Encabezado */}
+            <div className="mb-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-xs tracking-wide text-gray-500 uppercase">{product.category}</span>
+                  <h1 className="mt-1 text-4xl font-bold leading-tight text-gray-900">{product.title}</h1>
                 </div>
-                <div className="flex space-x-2">
-                  <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
-                    <Heart className="h-5 w-5" />
+                <div className="flex items-center gap-2">
+                  <button
+                    className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                      isFav ? "ring-1 ring-emerald-200" : ""
+                    }`}
+                    aria-pressed={isFav}
+                    onClick={() => setIsFav((v) => !v)}
+                  >
+                    <Heart className={`h-5 w-5 ${isFav ? "fill-current text-emerald-600" : ""}`} />
                   </button>
-                  <button className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors">
+                  <button
+                    onClick={handleShare}
+                    className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    aria-label="Compartir"
+                    title={canShare ? "Compartir" : "Copiar enlace"}
+                  >
                     <Share2 className="h-5 w-5" />
                   </button>
                 </div>
               </div>
 
-              {product.price > 0 ? (
-                <p className="text-2xl font-bold text-emerald-600 mt-2">
-                  ${product.price.toFixed(2)} MXN
-                </p>
-              ) : (
-                <p className="text-2xl font-bold text-emerald-600 mt-2">
-                  {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-6">
-              <h2 className="font-semibold text-lg mb-2">Descripción</h2>
-              <p className="text-gray-700">{product.description}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <h3 className="text-sm text-gray-500">Condición</h3>
-                <p className="font-medium">{product.condition}</p>
-              </div>
-              <div>
-                <h3 className="text-sm text-gray-500">Facultad</h3>
-                <p className="font-medium">{product.faculty}</p>
-              </div>
-              <div>
-                <h3 className="text-sm text-gray-500">Publicado por</h3>
-                <p className="font-medium">{product.owner}</p>
-              </div>
-              <div>
-                <h3 className="text-sm text-gray-500">Fecha de publicación</h3>
-                <p className="font-medium">{formatDate(product.createdAt)}</p>
+              {/* Precio destacado */}
+              <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
+                {product.price > 0 ? (
+                  <p className="text-3xl font-extrabold text-emerald-700">{formatPrice(product.price)}</p>
+                ) : (
+                  <p className="text-2xl font-bold text-emerald-700">
+                    {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
+                  </p>
+                )}
+                <span className="text-xs text-emerald-700/70">Precio sugerido por el publicador</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-auto">
+            {/* Divisor sutil */}
+            <div className="h-px w-full bg-gray-200/70 mb-6" />
+
+            {/* Descripción */}
+            <section className="mb-6">
+              <h2 className="font-semibold text-lg mb-2 text-gray-900">Descripción</h2>
+              <p className="text-gray-700 leading-7">
+                {product.description}
+              </p>
+            </section>
+
+            {/* Grid de detalles como mini-cards */}
+            <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <InfoCard icon={<BookOpen className="h-4 w-4" />} label="Condición" value={product.condition} />
+              <InfoCard icon={<Building2 className="h-4 w-4" />} label="Facultad" value={product.faculty} />
+              <InfoCard icon={<UserIcon className="h-4 w-4" />} label="Publicado por" value={product.owner} />
+              <InfoCard icon={<CalendarClock className="h-4 w-4" />} label="Fecha de publicación" value={<time dateTime={product.createdAt}>{formatDate(product.createdAt)}</time>} />
+            </section>
+
+            {/* Botones de acción (desktop/tablet) */}
+            <div className="hidden sm:flex flex-col sm:flex-row gap-3 mt-auto">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-medium hover:bg-emerald-700 transition-colors"
+                className="flex-1 bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-700 transition-all shadow-sm hover:shadow md:active:translate-y-[1px]"
               >
                 Estoy interesado
               </button>
               <button
-                onClick={() => setShowQR(!showQR)}
-                className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                onClick={() => setShowQR((v) => !v)}
+                className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="h-5 w-5" />
                 {showQR ? "Ocultar QR" : "Ver QR"}
               </button>
             </div>
 
+            {/* QR */}
             {showQR && (
-              <div className="mt-6 p-4 bg-white border rounded-lg flex flex-col items-center">
-                <h3 className="font-medium mb-2">Código QR del artículo</h3>
-                <div className="bg-gray-100 p-4 rounded-lg">
+              <div className="mt-6 p-5 bg-white border border-gray-200 rounded-2xl flex flex-col items-center shadow-sm">
+                <h3 className="font-semibold mb-2 text-gray-900">Código QR del artículo</h3>
+                <div className="bg-gray-100 p-4 rounded-xl">
                   <img
                     src="/placeholder.svg?height=200&width=200"
                     alt="Código QR del artículo"
                     className="w-40 h-40"
+                    loading="lazy"
                   />
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Escanea este código para compartir
-                </p>
+                <p className="text-sm text-gray-500 mt-2">Escanea este código para compartir</p>
               </div>
             )}
 
-            <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-amber-800">
-                  Recuerda que los intercambios deben realizarse dentro del
-                  campus universitario por seguridad. La universidad no se hace
-                  responsable por transacciones realizadas fuera del campus.
-                </p>
+            {/* Aviso de seguridad más limpio */}
+            <div className="mt-6 flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl shadow-sm">
+              <div className="shrink-0 grid place-items-center size-8 rounded-full bg-amber-100 text-amber-700">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div className="text-amber-900 text-sm leading-6">
+                Recuerda que los intercambios deben realizarse dentro del campus universitario por seguridad. La universidad no se hace responsable por transacciones realizadas fuera del campus.
+                <button className="ml-2 text-amber-800 underline decoration-amber-300 decoration-2 underline-offset-2 hover:opacity-90">Saber más</button>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Barra fija de acción en móvil */}
+      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="mx-auto max-w-screen-md px-4 py-3 flex items-center gap-3">
+          <div className="flex-1">
+            {product.price > 0 ? (
+              <div className="inline-flex items-baseline gap-2 rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-100">
+                <span className="text-xl font-extrabold text-emerald-700">{formatPrice(product.price)}</span>
+              </div>
+            ) : (
+              <span className="text-lg font-bold text-emerald-700">{product.type === "Préstamo" ? "Préstamo" : "Gratis"}</span>
+            )}
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex-1 bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-700 transition-all shadow-sm"
+          >
+            Estoy interesado
+          </button>
         </div>
       </div>
 
@@ -243,6 +346,20 @@ export default function ProductDetailPage() {
         onClose={() => setIsModalOpen(false)}
         productTitle={product.title}
       />
+    </div>
+  );
+}
+
+function InfoCard({ icon, label, value }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mt-0.5 grid place-items-center size-8 rounded-xl bg-gray-100 text-gray-700">
+        {icon}
+      </div>
+      <div>
+        <div className="text-xs text-gray-500">{label}</div>
+        <div className="text-sm font-medium text-gray-900">{value}</div>
+      </div>
     </div>
   );
 }
