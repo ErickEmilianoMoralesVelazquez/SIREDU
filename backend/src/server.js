@@ -1,5 +1,6 @@
 import app from "./app.js";
 import sequelize from "./config/database.js";
+import "./models/index.js";
 
 const startServer = async () => {
   try {
