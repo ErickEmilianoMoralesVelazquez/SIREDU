@@ -27,8 +27,8 @@ Obtiene todos los artículos con filtros, paginación e información de favorito
 - `page` (number): Página actual (default: 1)
 - `limit` (number): Elementos por página (default: 10)
 - `search` (string): Buscar en título y descripción
-- `category` (string): Filtrar por categoría
-- `type` (string): Filtrar por tipo (Venta, Préstamo, Regalo)
+- `category` (string): Filtrar por categoría (soporta múltiples separadas por comas)
+- `type` (string): Filtrar por tipo (soporta múltiples separados por comas)
 - `priceRange` (string): Rango de precios (ej: "0-500", "500-1000", "5000+")
 - `sortBy` (string): Ordenar por (recent, oldest, price_asc, price_desc)
 
@@ -89,6 +89,93 @@ Obtiene todos los tipos disponibles.
 {
   "success": true,
   "data": ["Venta", "Préstamo", "Regalo"]
+}
+```
+
+#### GET /items/search
+Búsqueda avanzada con filtros múltiples y estadísticas.
+
+**Query Parameters:**
+- `page` (number): Página actual (default: 1)
+- `limit` (number): Elementos por página (default: 10)
+- `search` (string): Palabras clave para búsqueda
+- `categories` (string|array): Categorías (múltiples separadas por comas)
+- `types` (string|array): Tipos (múltiples separados por comas)
+- `minPrice` (number): Precio mínimo
+- `maxPrice` (number): Precio máximo
+- `sortBy` (string): Ordenar por (recent, oldest, price_asc, price_desc, popular)
+- `status` (string): Estado del artículo (default: "available")
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "title": "Libro de Programación",
+      "description": "Libro excelente para aprender...",
+      "price": 250.00,
+      "category": "Libros",
+      "type": "Venta",
+      "image": "/uploads/1234567890-libro.jpg",
+      "images": ["/uploads/1234567890-libro.jpg"],
+      "owner": "carlos_mendez",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "isFavorite": true,
+      "favoriteCount": 15,
+      "status": "available",
+      "user": {
+        "id_user": 5,
+        "username": "carlos_mendez",
+        "email": "carlos@example.com"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 100,
+    "currentPage": 1,
+    "totalPages": 10,
+    "limit": 10
+  },
+  "filters": {
+    "search": "libro programación",
+    "categories": ["Libros", "Electrónicos"],
+    "types": ["Venta"],
+    "priceRange": { "min": 100, "max": 500 },
+    "sortBy": "recent",
+    "status": "available"
+  }
+}
+```
+
+#### GET /items/filter-stats
+Obtiene estadísticas de filtros para mostrar conteos y rangos.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "categories": [
+      { "name": "Libros", "count": 45 },
+      { "name": "Electrónicos", "count": 32 },
+      { "name": "Ropa", "count": 28 },
+      { "name": "Útiles", "count": 15 },
+      { "name": "Otros", "count": 8 }
+    ],
+    "types": [
+      { "name": "Venta", "count": 85 },
+      { "name": "Préstamo", "count": 23 },
+      { "name": "Regalo", "count": 12 }
+    ],
+    "prices": {
+      "min": 0,
+      "max": 15000,
+      "average": 1250.50
+    },
+    "total": 120
+  }
 }
 ```
 
@@ -196,7 +283,43 @@ Cuando se obtienen artículos, se incluye automáticamente:
 }
 ```
 
-## Filtros y Búsqueda
+## Filtros y Búsqueda Mejorados
+
+### 🆕 Nuevas Funcionalidades de Filtros
+
+#### Búsqueda por Palabras Clave (Mejorada)
+```
+GET /items?search=libro programación python
+```
+- **Búsqueda inteligente**: Divide las palabras clave y busca cada una
+- **Búsqueda en múltiples campos**: Título y descripción
+- **Soporte para frases**: Busca términos completos y palabras individuales
+
+#### Filtro por Múltiples Categorías
+```
+GET /items?category=Libros,Electrónicos
+GET /items/search?categories=Libros,Electrónicos,Ropa
+```
+- **Selección múltiple**: Permite seleccionar varias categorías
+- **Separador por comas**: Formato simple y intuitivo
+- **Flexibilidad**: Funciona tanto en endpoint básico como en búsqueda avanzada
+
+#### Filtro por Múltiples Tipos
+```
+GET /items?type=Venta,Préstamo
+GET /items/search?types=Venta,Préstamo,Regalo
+```
+- **Combinación de tipos**: Permite filtrar por varios tipos de intercambio
+- **Formato consistente**: Mismo formato que las categorías
+
+#### Búsqueda Avanzada
+```
+GET /items/search?search=libro&categories=Libros,Electrónicos&types=Venta&minPrice=100&maxPrice=500&sortBy=popular
+```
+- **Filtros combinados**: Todos los filtros en una sola consulta
+- **Rangos de precio**: Precio mínimo y máximo independientes
+- **Ordenamiento avanzado**: Incluye ordenamiento por popularidad
+- **Estadísticas de filtros**: Información sobre filtros aplicados
 
 ### Parámetros de Filtrado
 
@@ -291,10 +414,33 @@ GET /items?page=2&limit=20
 
 ## Ejemplos de Uso
 
-### Obtener Artículos con Filtros
+### Obtener Artículos con Filtros Básicos
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   "http://localhost:3001/items?category=Libros&type=Venta&priceRange=0-500&page=1&limit=10"
+```
+
+### Búsqueda Avanzada con Múltiples Filtros
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:3001/items/search?search=libro programación&categories=Libros,Electrónicos&types=Venta,Préstamo&minPrice=100&maxPrice=1000&sortBy=popular&page=1&limit=20"
+```
+
+### Obtener Estadísticas de Filtros
+```bash
+curl http://localhost:3001/items/filter-stats
+```
+
+### Búsqueda por Múltiples Categorías
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:3001/items?category=Libros,Electrónicos,Ropa&sortBy=recent"
+```
+
+### Búsqueda por Palabras Clave Múltiples
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost:3001/items?search=libro python programación&type=Venta"
 ```
 
 ### Obtener Categorías
@@ -334,6 +480,23 @@ curl -X POST \
 - ✅ Ordenamiento
 - ✅ Paginación
 - ✅ Información de favoritos
+- 🆕 **Soporte para múltiples categorías** (preparado para futuras actualizaciones)
+- 🆕 **Búsqueda avanzada** (endpoint `/items/search` disponible)
+- 🆕 **Estadísticas de filtros** (endpoint `/items/filter-stats` disponible)
+
+### Funcionalidades Preparadas para Frontend
+
+#### Filtros Múltiples
+El backend está preparado para soportar:
+- **Múltiples categorías**: `category=Libros,Electrónicos,Ropa`
+- **Múltiples tipos**: `type=Venta,Préstamo,Regalo`
+- **Búsqueda inteligente**: `search=libro programación python`
+
+#### Endpoints Adicionales
+- **`/items/search`**: Búsqueda avanzada con todos los filtros
+- **`/items/filter-stats`**: Estadísticas para mostrar conteos
+- **`/items/categories`**: Lista dinámica de categorías
+- **`/items/types`**: Lista dinámica de tipos
 
 ### ProductDetailPage.jsx
 - ✅ Información completa del artículo
