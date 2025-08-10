@@ -138,10 +138,10 @@ export const getGeneralStats = async (req, res) => {
     // Estadísticas por tipo
     const typeStats = await Item.findAll({
       attributes: [
-        "type",
+        "exchange_type",
         [sequelize.fn("COUNT", sequelize.col("id_item")), "count"]
       ],
-      group: ["type"],
+      group: ["exchange_type"],
       order: [[sequelize.fn("COUNT", sequelize.col("id_item")), "DESC"]]
     });
 
