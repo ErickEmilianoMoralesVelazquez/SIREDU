@@ -135,18 +135,21 @@ export const validateField = (field, value, additionalData = {}, options = {}) =
     return securityError;
   }
 
-  // Min length validation
-  if (rules.minLength && value.length < rules.minLength.value) {
+  // Min length validation — SOLO si NO estamos en login para contraseñas
+  if (rules.minLength && value.length < rules.minLength.value && 
+      !(field === 'password' && context === 'login')) {
     return rules.minLength.message;
   }
 
-  // Max length validation
-  if (rules.maxLength && value.length > rules.maxLength.value) {
+  // Max length validation — SOLO si NO estamos en login para contraseñas
+  if (rules.maxLength && value.length > rules.maxLength.value && 
+      !(field === 'password' && context === 'login')) {
     return rules.maxLength.message;
   }
 
-  // Pattern validation
-  if (rules.pattern && !rules.pattern.value.test(value)) {
+  // Pattern validation — SOLO si NO estamos en login para contraseñas
+  if (rules.pattern && !rules.pattern.value.test(value) && 
+      !(field === 'password' && context === 'login')) {
     return rules.pattern.message;
   }
 
