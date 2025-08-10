@@ -138,7 +138,7 @@ export function AuthProvider({ children }) {
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
         payload: { user: result.user },
       });
-      return { success: true };
+      return { success: true, user: result.user };
     } catch (error) {
       dispatch({
         type: AUTH_ACTIONS.LOGIN_FAILURE,

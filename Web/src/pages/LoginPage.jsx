@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useToast } from "../hooks/useToast.js";
+import { useToast } from "../context/ToastContext.jsx";
 import {
   validateLoginForm,
   validateRegisterForm,
@@ -125,7 +125,13 @@ export default function LoginPage() {
 
         if (result.success) {
           showSuccess("¡Bienvenido! Has iniciado sesión correctamente");
-          navigate("/");
+          setTimeout(() => {
+            if (result.user && result.user.role === 'admin') {
+              navigate("/admin");
+            } else {
+              navigate("/");
+            }
+          }, 2000);
         } else {
           showError(result.error || "Error al iniciar sesión");
         }
@@ -149,16 +155,18 @@ export default function LoginPage() {
           showSuccess(
             "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión",
           );
-          setMode("login");
-          setFormData({
-            email: formData.email,
-            password: "",
-            name: "",
-            confirmPassword: "",
-            acceptTerms: false,
-          });
-          setErrors({});
-          setTouched({});
+          setTimeout(() => {
+            setIsLogin(true);
+            setFormData({
+              email: formData.email,
+              password: "",
+              name: "",
+              confirmPassword: "",
+              acceptTerms: false,
+            });
+            setErrors({});
+            setTouched({});
+          }, 2000);
         } else {
           showError(result.error || "Error al crear la cuenta");
         }

@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
 import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const UserDropdown = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -19,9 +22,20 @@ const UserDropdown = ({ user, onLogout }) => {
     };
   }, []);
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
     setIsOpen(false);
+    setShowConfirm(true);
+  };
+
+  const { showSuccess } = useToast();
+  const handleConfirmLogout = () => {
+    setShowConfirm(false);
     onLogout();
+    showSuccess('Sesión cerrada correctamente');
+  };
+
+  const handleCancelLogout = () => {
+    setShowConfirm(false);
   };
 
   return (
@@ -142,7 +156,7 @@ const UserDropdown = ({ user, onLogout }) => {
             {/* Logout */}
             <div className="py-1">
               <button
-                onClick={handleLogout}
+                onClick={handleLogoutClick}
                 className="group flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 role="menuitem"
               >
@@ -153,6 +167,13 @@ const UserDropdown = ({ user, onLogout }) => {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={showConfirm}
+        title="¿Cerrar sesión?"
+        message="¿Estás seguro de que deseas cerrar sesión?"
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+      />
     </div>
   );
 };
