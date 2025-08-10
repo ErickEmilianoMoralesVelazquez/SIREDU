@@ -102,7 +102,7 @@ export default function HomePage() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <Link
-              to="/categoria/libros"
+              to="/productos/libros"
               className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow"
             >
               <div className="bg-emerald-100 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
@@ -115,7 +115,7 @@ export default function HomePage() {
             </Link>
 
             <Link
-              to="/categoria/ropa"
+              to="/productos/ropa"
               className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow"
             >
               <div className="bg-emerald-100 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
@@ -126,7 +126,7 @@ export default function HomePage() {
             </Link>
 
             <Link
-              to="/categoria/electronicos"
+              to="/productos/electronicos"
               className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow"
             >
               <div className="bg-emerald-100 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
@@ -139,7 +139,7 @@ export default function HomePage() {
             </Link>
 
             <Link
-              to="/categoria/utiles"
+              to="/productos/utiles"
               className="bg-white rounded-xl shadow-md p-6 text-center hover:shadow-lg transition-shadow"
             >
               <div className="bg-emerald-100 w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4">
