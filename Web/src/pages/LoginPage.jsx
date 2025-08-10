@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../hooks/useToast.js";
 import {
@@ -19,7 +19,7 @@ export default function LoginPage() {
   const { login, register, isLoading, isAuthenticated } = useAuth();
   const { showSuccess, showError } = useToast();
 
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState("login"); // "login", "register", "recovery"
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -34,9 +34,9 @@ export default function LoginPage() {
   // Verificar si el parámetro mode=register está en la URL
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
-    const mode = searchParams.get("mode");
-    if (mode === "register") {
-      setIsLogin(false);
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "register") {
+      setMode("register");
     }
   }, [location.search]);
 
@@ -87,8 +87,18 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (mode === "recovery") {
+      // Simular envío de recuperación de contraseña
+      showSuccess("Se ha enviado un enlace de recuperación a tu correo electrónico");
+      setMode("login");
+      setFormData({ email: "", password: "", name: "", confirmPassword: "", acceptTerms: false });
+      setErrors({});
+      setTouched({});
+      return;
+    }
+
     // Validate form
-    const validation = isLogin
+    const validation = mode === "login"
       ? validateLoginForm(formData)
       : validateRegisterForm(formData);
 
@@ -107,7 +117,7 @@ export default function LoginPage() {
     }
 
     try {
-      if (isLogin) {
+      if (mode === "login") {
         const result = await login({
           email: formData.email,
           password: formData.password,
@@ -139,7 +149,7 @@ export default function LoginPage() {
           showSuccess(
             "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión",
           );
-          setIsLogin(true);
+          setMode("login");
           setFormData({
             email: formData.email,
             password: "",
@@ -158,8 +168,8 @@ export default function LoginPage() {
     }
   };
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
+  const toggleMode = (newMode) => {
+    setMode(newMode);
     setErrors({});
     setTouched({});
     setFormData({
@@ -169,6 +179,58 @@ export default function LoginPage() {
       confirmPassword: "",
       acceptTerms: false,
     });
+  };
+
+  const getTitle = () => {
+    switch (mode) {
+      case "login":
+        return "Iniciar Sesión";
+      case "register":
+        return "Crear Cuenta";
+      case "recovery":
+        return "Recuperar Contraseña";
+      default:
+        return "Iniciar Sesión";
+    }
+  };
+
+  const getSubtitle = () => {
+    switch (mode) {
+      case "login":
+        return "Accede a tu cuenta para gestionar tus artículos";
+      case "register":
+        return "Únete a la comunidad de intercambio universitario";
+      case "recovery":
+        return "Ingresa tu correo para recibir instrucciones de recuperación";
+      default:
+        return "Accede a tu cuenta para gestionar tus artículos";
+    }
+  };
+
+  const getSubmitButtonText = () => {
+    switch (mode) {
+      case "login":
+        return "Iniciar Sesión";
+      case "register":
+        return "Crear Cuenta";
+      case "recovery":
+        return "Enviar Instrucciones";
+      default:
+        return "Iniciar Sesión";
+    }
+  };
+
+  const getLoadingText = () => {
+    switch (mode) {
+      case "login":
+        return "Iniciando...";
+      case "register":
+        return "Creando cuenta...";
+      case "recovery":
+        return "Enviando...";
+      default:
+        return "Iniciando...";
+    }
   };
 
   return (
@@ -187,19 +249,17 @@ export default function LoginPage() {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-6 bg-emerald-700 text-white text-center">
             <h1 className="text-2xl font-bold">
-              {isLogin ? "Iniciar Sesión" : "Crear Cuenta"}
+              {getTitle()}
             </h1>
             <p className="text-emerald-100">
-              {isLogin
-                ? "Accede a tu cuenta para gestionar tus artículos"
-                : "Únete a la comunidad de intercambio universitario"}
+              {getSubtitle()}
             </p>
           </div>
 
           <div className="p-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Nombre (solo en registro) */}
-              {!isLogin && (
+              {mode === "register" && (
                 <div>
                   <label
                     htmlFor="name"
@@ -259,50 +319,52 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Contraseña
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                      errors.password
-                        ? "border-red-300 focus:ring-red-500"
-                        : "border-gray-300 focus:ring-emerald-500"
-                    }`}
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              {/* Password (solo en login y registro) */}
+              {mode !== "recovery" && (
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required
+                      className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                        errors.password
+                          ? "border-red-300 focus:ring-red-500"
+                          : "border-gray-300 focus:ring-emerald-500"
+                      }`}
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                  {errors.password && touched.password && (
+                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                  )}
                 </div>
-                {errors.password && touched.password && (
-                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
-                )}
-              </div>
+              )}
 
               {/* Confirm Password (solo en registro) */}
-              {!isLogin && (
+              {mode === "register" && (
                 <div>
                   <label
                     htmlFor="confirmPassword"
@@ -337,7 +399,7 @@ export default function LoginPage() {
               )}
 
               {/* Terms (solo en registro) */}
-              {!isLogin && (
+              {mode === "register" && (
                 <div className="flex items-start">
                   <input
                     type="checkbox"
@@ -376,14 +438,15 @@ export default function LoginPage() {
               )}
 
               {/* Forgot Password (solo en login) */}
-              {isLogin && (
+              {mode === "login" && (
                 <div className="text-right">
-                  <Link
-                    to="/recuperar-contrasena"
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("recovery")}
                     className="text-sm text-emerald-600 hover:underline"
                   >
                     ¿Olvidaste tu contraseña?
-                  </Link>
+                  </button>
                 </div>
               )}
 
@@ -397,28 +460,58 @@ export default function LoginPage() {
                   <>
                     <ButtonLoader size="sm" color="white" />
                     <span className="ml-2">
-                      {isLogin ? "Iniciando..." : "Creando cuenta..."}
+                      {getLoadingText()}
                     </span>
                   </>
                 ) : (
-                  <span>{isLogin ? "Iniciar Sesión" : "Crear Cuenta"}</span>
+                  <span>{getSubmitButtonText()}</span>
                 )}
               </button>
             </form>
 
-            {/* Toggle Login/Register */}
+            {/* Toggle Login/Register/Recovery */}
             <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                {isLogin ? "¿No tienes una cuenta?" : "¿Ya tienes una cuenta?"}{" "}
-                <button
-                  type="button"
-                  onClick={toggleMode}
-                  disabled={isLoading}
-                  className="text-emerald-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isLogin ? "Regístrate" : "Inicia sesión"}
-                </button>
-              </p>
+              {mode === "login" && (
+                <p className="text-gray-600">
+                  ¿No tienes una cuenta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("register")}
+                    disabled={isLoading}
+                    className="text-emerald-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Regístrate
+                  </button>
+                </p>
+              )}
+              
+              {mode === "register" && (
+                <p className="text-gray-600">
+                  ¿Ya tienes una cuenta?{" "}
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("login")}
+                    disabled={isLoading}
+                    className="text-emerald-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Inicia sesión
+                  </button>
+                </p>
+              )}
+
+              {mode === "recovery" && (
+                <p className="text-gray-600">
+                  ¿Recordaste tu contraseña?{" "}
+                  <button
+                    type="button"
+                    onClick={() => toggleMode("login")}
+                    disabled={isLoading}
+                    className="text-emerald-600 font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Inicia sesión
+                  </button>
+                </p>
+              )}
             </div>
           </div>
         </div>
