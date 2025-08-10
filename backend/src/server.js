@@ -7,6 +7,7 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("Conectado a la base de datos");
 
+    //se cambio para solucionar un error de sincronización de las tablas
     await sequelize.sync({ force: false });
     console.log("Tablas sincronizadas");
 
