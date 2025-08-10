@@ -104,9 +104,19 @@ const validateSecurity = (value, fieldType = 'general') => {
   return null;
 };
 
-export const validateField = (field, value, additionalData = {}) => {
+/**
+ * Validación puntual por campo.
+ * @param {string} field
+ * @param {string} value
+ * @param {object} additionalData
+ * @param {object} options - { context: "login" | "register" }
+ *    - Por defecto: context = "register"
+ */
+export const validateField = (field, value, additionalData = {}, options = {}) => {
   const rules = validationRules[field];
   if (!rules) return null;
+
+  const context = options.context || 'register';
 
   // Required validation
   if (rules.required && (!value || value.trim() === '')) {
@@ -145,8 +155,8 @@ export const validateField = (field, value, additionalData = {}) => {
     return rules.university.message;
   }
 
-  // Weak password validation
-  if (field === 'password' && rules.weakPassword && rules.weakPassword.value.test(value)) {
+  // Weak password validation — SOLO si NO estamos en login
+  if (field === 'password' && context !== 'login' && rules.weakPassword && rules.weakPassword.value.test(value)) {
     return rules.weakPassword.message;
   }
 
@@ -158,12 +168,18 @@ export const validateField = (field, value, additionalData = {}) => {
   return null;
 };
 
-export const validateForm = (formData, fieldsToValidate) => {
+/**
+ * Validación de formulario completo.
+ * @param {object} formData
+ * @param {string[]} fieldsToValidate
+ * @param {object} options - { context?: "login" | "register" }
+ */
+export const validateForm = (formData, fieldsToValidate, options = {}) => {
   const errors = {};
   let isValid = true;
 
   fieldsToValidate.forEach(field => {
-    const error = validateField(field, formData[field], formData);
+    const error = validateField(field, formData[field], formData, options);
     if (error) {
       errors[field] = error;
       isValid = false;
@@ -174,21 +190,28 @@ export const validateForm = (formData, fieldsToValidate) => {
 };
 
 export const validateLoginForm = (formData) => {
-  return validateForm(formData, ['email', 'password']);
+  // Importante: forzamos el contexto "login" para NO aplicar fortaleza/weakPassword
+  return validateForm(formData, ['email', 'password'], { context: 'login' });
 };
 
 export const validateRegisterForm = (formData) => {
-  return validateForm(formData, ['name', 'email', 'password', 'confirmPassword']);
+  return validateForm(formData, ['name', 'email', 'password', 'confirmPassword'], { context: 'register' });
 };
 
-// Real-time validation for individual fields
-export const validateFieldRealTime = (field, value, formData = {}) => {
+/**
+ * Validación en tiempo real para campos individuales.
+ * @param {string} field
+ * @param {string} value
+ * @param {object} formData
+ * @param {object} options - { context?: "login" | "register" }
+ */
+export const validateFieldRealTime = (field, value, formData = {}, options = {}) => {
   // Don't validate on first character for better UX
   if (value.length <= 1 && field !== 'confirmPassword') {
     return null;
   }
 
-  return validateField(field, value, formData);
+  return validateField(field, value, formData, options);
 };
 
 // Enhanced sanitization function
