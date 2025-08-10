@@ -147,6 +147,47 @@ export const getTypes = async (req, res) => {
   }
 };
 
+// ===== OBTENER ESTADÍSTICAS DE FILTROS =====
+export const getFilterStats = async (req, res) => {
+  try {
+    const stats = await ItemsService.getFilterStats();
+    
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error getting filter stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener estadísticas de filtros",
+      error: error.message,
+    });
+  }
+};
+
+// ===== BÚSQUEDA AVANZADA =====
+export const advancedSearch = async (req, res) => {
+  try {
+    const userId = req.user?.id_user || null;
+    const result = await ItemsService.advancedSearch(req.query, userId);
+
+    res.status(200).json({
+      success: true,
+      data: result.items,
+      pagination: result.pagination,
+      filters: result.appliedFilters
+    });
+  } catch (error) {
+    console.error("Error in advanced search:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error en la búsqueda avanzada",
+      error: error.message,
+    });
+  }
+};
+
 /*
 EJEMPLO DE CÓMO SUBIR UN ARTÍCULO CON IMÁGENES:
 

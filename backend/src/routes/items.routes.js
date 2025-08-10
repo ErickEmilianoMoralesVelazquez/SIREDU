@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import { getAllItems, getItemById, createItem, getCategories, getTypes } from "../controllers/items.controller.js";
+import { getAllItems, getItemById, createItem, getCategories, getTypes, getFilterStats, advancedSearch } from "../controllers/items.controller.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import { validateCreateItem } from "../middlewares/validation.middleware.js";
 
@@ -40,8 +40,10 @@ const upload = multer({
 });
 
 router.get("/", getAllItems);
+router.get("/search", advancedSearch);
 router.get("/categories", getCategories);
 router.get("/types", getTypes);
+router.get("/filter-stats", getFilterStats);
 router.get("/:id", getItemById);
 router.post("/", authenticateToken, upload.fields([
   { name: 'picture1', maxCount: 1 },
