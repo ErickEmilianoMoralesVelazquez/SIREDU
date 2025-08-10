@@ -44,7 +44,7 @@ const Item = sequelize.define(
       allowNull: false,
     },
     exchange_type: {
-      type: DataTypes.ENUM("venta", "renta", "prestamo"),
+      type: DataTypes.ENUM("Venta", "Préstamo", "Regalo"),
       allowNull: false,
     },
     created_at: {

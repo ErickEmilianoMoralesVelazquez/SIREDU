@@ -33,9 +33,9 @@ export const validateCreateItem = (req, res, next) => {
     errors.push("La categoría es obligatoria");
   }
 
-  const validExchangeTypes = ["venta", "renta", "prestamo"];
+  const validExchangeTypes = ["Venta", "Préstamo", "Regalo"];
   if (!exchange_type || !validExchangeTypes.includes(exchange_type)) {
-    errors.push("El tipo de intercambio debe ser: venta, renta o prestamo");
+    errors.push("El tipo de intercambio debe ser: Venta, Préstamo o Regalo");
   }
 
   if (req.body && req.body.price && isNaN(parseFloat(req.body.price))) {
