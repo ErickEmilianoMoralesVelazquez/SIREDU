@@ -1,10 +1,13 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Filter, Search, ChevronDown } from "lucide-react";
 import ProductCard from "../components/products/ProductCard";
 
 export default function ProductsPage() {
+  const params = useParams();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  
   // Estado para los filtros
   const [filters, setFilters] = useState({
     category: "",
@@ -15,6 +18,44 @@ export default function ProductsPage() {
 
   // Estado para mostrar/ocultar filtros en móvil
   const [showFilters, setShowFilters] = useState(false);
+
+  // Efecto para hacer scroll al inicio de la página cuando se carga
+  useEffect(() => {
+    // Hacer scroll al inicio de la página
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
+
+  // Efecto para establecer la categoría desde los parámetros de ruta o URL
+  useEffect(() => {
+    // Primero verificar si viene de una ruta de categoría
+    if (params.category) {
+      // Mapear las categorías de la URL a las categorías del sistema
+      const categoryMap = {
+        'libros': 'Libros',
+        'ropa': 'Ropa',
+        'electronicos': 'Electrónicos',
+        'utiles': 'Útiles'
+      };
+      
+      const mappedCategory = categoryMap[params.category];
+      if (mappedCategory) {
+        setFilters(prev => ({
+          ...prev,
+          category: mappedCategory
+        }));
+      }
+    }
+    // Si no hay categoría en la ruta, verificar parámetros de URL
+    else {
+      const categoryFromUrl = searchParams.get('category');
+      if (categoryFromUrl) {
+        setFilters(prev => ({
+          ...prev,
+          category: categoryFromUrl
+        }));
+      }
+    }
+  }, [params.category, searchParams]);
 
   // Datos de ejemplo para productos
   const products = [

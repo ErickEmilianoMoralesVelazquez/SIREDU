@@ -22,6 +22,7 @@ function AppContent() {
             <Route index element={<HomePage />} />
             <Route path="productos" element={<ProductsPage />} />
             <Route path="producto/:id" element={<ProductDetailPage />} />
+            <Route path="productos/:category" element={<ProductsPage />} />
           </Route>
           {/* Rutas protegidas para usuarios autenticados */}
           <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
