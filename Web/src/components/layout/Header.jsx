@@ -13,6 +13,43 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Efecto para manejar scroll automático cuando se navega desde otra página
+  useEffect(() => {
+    if (location.state?.scrollTo && location.pathname === "/") {
+      // Pequeño delay para asegurar que la página esté completamente cargada
+      setTimeout(() => {
+        const sectionId = location.state.scrollTo;
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const targetPosition = element.offsetTop - 80;
+          const startPosition = window.pageYOffset;
+          const distance = targetPosition - startPosition;
+          const duration = 1300;
+          let start = null;
+
+          function animation(currentTime) {
+            if (start === null) start = currentTime;
+            const timeElapsed = currentTime - start;
+            const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+            window.scrollTo(0, run);
+            if (timeElapsed < duration) requestAnimationFrame(animation);
+          }
+
+          function easeInOutCubic(t, b, c, d) {
+            t /= d / 2;
+            if (t < 1) return c / 2 * t * t * t + b;
+            t -= 2;
+            return c / 2 * (t * t * t + 2) + b;
+          }
+
+          requestAnimationFrame(animation);
+        }
+        // Limpiar el estado para evitar scrolls no deseados
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 100);
+    }
+  }, [location, navigate]);
+
   // Datos de ejemplo para productos (mismos que en HomePage)
   const allProducts = [
     {
@@ -120,35 +157,39 @@ export default function Header() {
 
   // Función para hacer scroll suave a una sección
   const scrollToSection = (sectionId) => {
+    // Si no estamos en la página principal, navegar primero
+    if (location.pathname !== "/") {
+      navigate("/", { state: { scrollTo: sectionId } });
+      return;
+    }
+
     // Solo hacer scroll si estamos en la página principal
-    if (location.pathname === "/") {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        // Scroll más lento con animación 
-        const targetPosition = element.offsetTop - 80; 
-        const startPosition = window.pageYOffset;
-        const distance = targetPosition - startPosition;
-        const duration = 1300; 
-        let start = null;
+    const element = document.getElementById(sectionId);
+    if (element) {
+      // Scroll más lento con animación 
+      const targetPosition = element.offsetTop - 80; 
+      const startPosition = window.pageYOffset;
+      const distance = targetPosition - startPosition;
+      const duration = 1300; 
+      let start = null;
 
-        function animation(currentTime) {
-          if (start === null) start = currentTime;
-          const timeElapsed = currentTime - start;
-          const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
-          window.scrollTo(0, run);
-          if (timeElapsed < duration) requestAnimationFrame(animation);
-        }
-
-        // Función de easing para movimiento más suave
-        function easeInOutCubic(t, b, c, d) {
-          t /= d / 2;
-          if (t < 1) return c / 2 * t * t * t + b;
-          t -= 2;
-          return c / 2 * (t * t * t + 2) + b;
-        }
-
-        requestAnimationFrame(animation);
+      function animation(currentTime) {
+        if (start === null) start = currentTime;
+        const timeElapsed = currentTime - start;
+        const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+        window.scrollTo(0, run);
+        if (timeElapsed < duration) requestAnimationFrame(animation);
       }
+
+      // Función de easing para movimiento más suave
+      function easeInOutCubic(t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return c / 2 * t * t * t + b;
+        t -= 2;
+        return c / 2 * (t * t * t + 2) + b;
+      }
+
+      requestAnimationFrame(animation);
     }
   };
 
