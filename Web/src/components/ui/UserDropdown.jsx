@@ -3,11 +3,13 @@ import { useToast } from '../../context/ToastContext.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
 import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const UserDropdown = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const dropdownRef = useRef(null);
+  const { isLoading } = useAuth();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -37,6 +39,11 @@ const UserDropdown = ({ user, onLogout }) => {
   const handleCancelLogout = () => {
     setShowConfirm(false);
   };
+
+  // No mostrar el dropdown mientras se está cargando
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -72,24 +79,33 @@ const UserDropdown = ({ user, onLogout }) => {
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {user?.username || 'Usuario'}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
-                    {user?.email || 'usuario@ejemplo.com'}
-                  </p>
                 </div>
               </div>
             </div>
 
             {/* Menu Items */}
             <div className="py-1">
-              {/* My Profile */}
+              {/* Mis Favoritos */}
               <Link
-                to="/perfil"
+                to="/favoritos"
                 className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
                 role="menuitem"
                 onClick={() => setIsOpen(false)}
               >
-                <User className="mr-3 h-4 w-4 text-gray-400 group-hover:text-emerald-500" />
-                Mi Perfil
+                <svg
+                  className="mr-3 h-4 w-4 text-gray-400 group-hover:text-emerald-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+                Mis Favoritos
               </Link>
 
               {/* Publish Article */}

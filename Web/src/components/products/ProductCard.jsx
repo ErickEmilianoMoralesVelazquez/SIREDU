@@ -92,13 +92,32 @@ export default function ProductCard({ product, onToggleFavorite }) {
           )}
         </div>
       </Link>
-
       {/* Contenido */}
       <div className="p-4">
         {category && (
           <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">
             {category}
           </div>
+
+          <button 
+            className={`transition-colors ${
+              product.isFavorite 
+                ? 'text-red-500' 
+                : 'text-gray-400 hover:text-red-500'
+            }`}
+          >
+            <Heart className={`h-5 w-5 ${product.isFavorite ? 'fill-current' : ''}`} />
+          </button>
+        </div>
+
+        {product.price > 0 ? (
+          <p className="text-lg font-bold text-emerald-600 mt-2">
+            ${product.price.toFixed(2)} MXN
+          </p>
+        ) : (
+          <p className="text-lg font-bold text-emerald-600 mt-2">
+            {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
+          </p>
         )}
         <Link to={`/articulos/${id}`} className="block">
           <h3 className="line-clamp-2 text-base font-semibold text-gray-900 transition-colors group-hover:text-emerald-700">

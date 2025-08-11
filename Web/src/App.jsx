@@ -7,6 +7,7 @@ import HomePage from "./pages/HomePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import PublishProductPage from "./pages/PublishProductPage";
+import FavoritesPage from "./pages/FavoritesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProtectedRoute from "./components/ui/ProtectedRoute.jsx";
@@ -29,6 +30,10 @@ function AppContent() {
             <Route path="productos" element={<ProductsPage />} />
             <Route path="producto/:id" element={<ProductDetailPage />} />
             <Route path="productos/:category" element={<ProductsPage />} />
+            {/* Ruta protegida para favoritos dentro del layout */}
+            <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
+              <Route path="favoritos" element={<FavoritesPage />} />
+            </Route>
           </Route>
 
           {/* Rutas protegidas para usuarios autenticados */}

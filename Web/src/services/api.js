@@ -13,6 +13,7 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
+
     // Soporte de params -> ?a=1&b=2 (omite null/undefined/"")
     const qs =
       options.params && typeof options.params === "object"
@@ -36,6 +37,11 @@ class ApiService {
     const baseHeaders = isFormData
       ? {}
       : { "Content-Type": "application/json" };
+
+    // Asegurar que el endpoint empiece con / si no lo tiene
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${this.baseURL}${normalizedEndpoint}`;
+
 
     const config = {
       method: options.method || "GET",

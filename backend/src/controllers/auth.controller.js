@@ -13,15 +13,6 @@ export const register = async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
-    const existingUser = await User.findOne({
-      where: {
-        username,
-      },
-    });
-    if (existingUser) {
-      return res.status(409).json({ error: 'El usuario ya existe' });
-    }
-
     const existingEmail = await User.findOne({ where: { email } });
     if (existingEmail) {
       return res.status(409).json({ error: 'El email ya está registrado' });
