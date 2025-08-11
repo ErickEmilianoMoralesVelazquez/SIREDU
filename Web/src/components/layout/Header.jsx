@@ -3,13 +3,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, Menu, X, User, LogIn } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import UserDropdown from "../ui/UserDropdown.jsx";
+import Loader from "../ui/Loader";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -321,7 +322,12 @@ export default function Header() {
 
           {/* Acciones de usuario en escritorio */}
           <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <Loader />
+                <span className="text-sm text-emerald-200">Cargando...</span>
+              </div>
+            ) : isAuthenticated ? (
               <>
                 <Link
                   to="/publicar"
@@ -454,7 +460,12 @@ export default function Header() {
               >
                 Cómo Funciona
               </button>
-              {isAuthenticated ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center space-x-2 py-4">
+                  <Loader />
+                  <span className="text-sm text-emerald-200">Cargando...</span>
+                </div>
+              ) : isAuthenticated ? (
                 <>
                   <Link
                     to="/publicar"
@@ -463,11 +474,23 @@ export default function Header() {
                     Publicar Artículo
                   </Link>
                   <Link
-                    to="/perfil"
+                    to="/favoritos"
                     className="flex items-center space-x-1 hover:text-emerald-200 transition-colors"
                   >
-                    <User className="h-5 w-5" />
-                    <span>Mi Perfil ({user?.username || "Usuario"})</span>
+                    <svg
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                    <span>Mis Favoritos</span>
                   </Link>
                   <button
                     onClick={() => {
