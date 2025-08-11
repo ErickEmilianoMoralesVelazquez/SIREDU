@@ -6,7 +6,9 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    // Asegurar que el endpoint empiece con / si no lo tiene
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${this.baseURL}${normalizedEndpoint}`;
 
     const config = {
       headers: {

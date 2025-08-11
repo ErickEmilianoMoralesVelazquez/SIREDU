@@ -103,9 +103,37 @@ export function AuthProvider({ children }) {
 
   // Initialize authentication on app start
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
-        const user = authService.initializeAuth();
+        // Verificar si hay un token válido
+        const token = authService.getToken();
+        if (!token) {
+          dispatch({
+            type: AUTH_ACTIONS.INITIALIZE_AUTH,
+            payload: {
+              user: null,
+              isAuthenticated: false,
+            },
+          });
+          return;
+        }
+
+        // Verificar si el token es válido
+        if (!authService.isAuthenticated()) {
+          // Token expirado o inválido, limpiar estado
+          authService.logout();
+          dispatch({
+            type: AUTH_ACTIONS.INITIALIZE_AUTH,
+            payload: {
+              user: null,
+              isAuthenticated: false,
+            },
+          });
+          return;
+        }
+
+        // Token válido, obtener usuario
+        const user = authService.getCurrentUser();
         dispatch({
           type: AUTH_ACTIONS.INITIALIZE_AUTH,
           payload: {
@@ -115,6 +143,8 @@ export function AuthProvider({ children }) {
         });
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // En caso de error, limpiar estado
+        authService.logout();
         dispatch({
           type: AUTH_ACTIONS.INITIALIZE_AUTH,
           payload: {

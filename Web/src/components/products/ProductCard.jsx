@@ -55,8 +55,14 @@ export default function ProductCard({ product }) {
               </h3>
             </Link>
           </div>
-          <button className="text-gray-400 hover:text-red-500 transition-colors">
-            <Heart className="h-5 w-5" />
+          <button 
+            className={`transition-colors ${
+              product.isFavorite 
+                ? 'text-red-500' 
+                : 'text-gray-400 hover:text-red-500'
+            }`}
+          >
+            <Heart className={`h-5 w-5 ${product.isFavorite ? 'fill-current' : ''}`} />
           </button>
         </div>
 
