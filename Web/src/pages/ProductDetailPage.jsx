@@ -15,6 +15,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import InterestModal from "../components/products/InterestModal";
+import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -22,6 +24,8 @@ export default function ProductDetailPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [isFav, setIsFav] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const urlbase = "http://localhost:3000/producto/";
 
   // Datos de ejemplo para el producto (placeholder)
   const product = {
@@ -112,6 +116,30 @@ export default function ProductDetailPage() {
     } catch {}
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!showQR) return;
+      const data = await generarQRCode();
+      if (!cancelled) setQrDataUrl(data || null);
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [showQR, product.id]);
+
+  const generarQRCode = async () => {
+    const url = `${urlbase}${product.id}`;
+    try {
+      const qrBase64 = await QRCode.toDataURL(url, { width: 300, margin: 2 });
+      return qrBase64;
+    } catch (error) {
+      console.error("Error al generar el QR:", error);
+      return "";
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Breadcrumb */}
@@ -119,7 +147,9 @@ export default function ProductDetailPage() {
         <ol className="flex items-center gap-2">
           <li className="hover:text-gray-700 transition-colors">Inicio</li>
           <li className="opacity-50">/</li>
-          <li className="hover:text-gray-700 transition-colors">{product.category}</li>
+          <li className="hover:text-gray-700 transition-colors">
+            {product.category}
+          </li>
           <li className="opacity-50">/</li>
           <li className="text-gray-700 line-clamp-1">{product.title}</li>
         </ol>
@@ -139,7 +169,9 @@ export default function ProductDetailPage() {
               <img
                 key={currentImage} // fuerza fade al cambiar
                 src={product.images[currentImage] || "/placeholder.svg"}
-                alt={`${product.title} - Imagen ${currentImage + 1} de ${totalImages}`}
+                alt={`${product.title} - Imagen ${
+                  currentImage + 1
+                } de ${totalImages}`}
                 className="absolute inset-0 w-full h-full object-contain transition-opacity duration-200 ease-out"
                 loading="eager"
                 onError={(e) => {
@@ -216,8 +248,12 @@ export default function ProductDetailPage() {
             <div className="mb-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-xs tracking-wide text-gray-500 uppercase">{product.category}</span>
-                  <h1 className="mt-1 text-4xl font-bold leading-tight text-gray-900">{product.title}</h1>
+                  <span className="text-xs tracking-wide text-gray-500 uppercase">
+                    {product.category}
+                  </span>
+                  <h1 className="mt-1 text-4xl font-bold leading-tight text-gray-900">
+                    {product.title}
+                  </h1>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -227,7 +263,11 @@ export default function ProductDetailPage() {
                     aria-pressed={isFav}
                     onClick={() => setIsFav((v) => !v)}
                   >
-                    <Heart className={`h-5 w-5 ${isFav ? "fill-current text-emerald-600" : ""}`} />
+                    <Heart
+                      className={`h-5 w-5 ${
+                        isFav ? "fill-current text-emerald-600" : ""
+                      }`}
+                    />
                   </button>
                   <button
                     onClick={handleShare}
@@ -243,13 +283,19 @@ export default function ProductDetailPage() {
               {/* Precio destacado */}
               <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
                 {product.price > 0 ? (
-                  <p className="text-3xl font-extrabold text-emerald-700">{formatPrice(product.price)}</p>
+                  <p className="text-3xl font-extrabold text-emerald-700">
+                    {formatPrice(product.price)}
+                  </p>
                 ) : (
                   <p className="text-2xl font-bold text-emerald-700">
-                    {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
+                    {product.type === "Préstamo"
+                      ? "Préstamo temporal"
+                      : "Gratis"}
                   </p>
                 )}
-                <span className="text-xs text-emerald-700/70">Precio sugerido por el publicador</span>
+                <span className="text-xs text-emerald-700/70">
+                  Precio sugerido por el publicador
+                </span>
               </div>
             </div>
 
@@ -258,18 +304,38 @@ export default function ProductDetailPage() {
 
             {/* Descripción */}
             <section className="mb-6">
-              <h2 className="font-semibold text-lg mb-2 text-gray-900">Descripción</h2>
-              <p className="text-gray-700 leading-7">
-                {product.description}
-              </p>
+              <h2 className="font-semibold text-lg mb-2 text-gray-900">
+                Descripción
+              </h2>
+              <p className="text-gray-700 leading-7">{product.description}</p>
             </section>
 
             {/* Grid de detalles como mini-cards */}
             <section className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InfoCard icon={<BookOpen className="h-4 w-4" />} label="Condición" value={product.condition} />
-              <InfoCard icon={<Building2 className="h-4 w-4" />} label="Facultad" value={product.faculty} />
-              <InfoCard icon={<UserIcon className="h-4 w-4" />} label="Publicado por" value={product.owner} />
-              <InfoCard icon={<CalendarClock className="h-4 w-4" />} label="Fecha de publicación" value={<time dateTime={product.createdAt}>{formatDate(product.createdAt)}</time>} />
+              <InfoCard
+                icon={<BookOpen className="h-4 w-4" />}
+                label="Condición"
+                value={product.condition}
+              />
+              <InfoCard
+                icon={<Building2 className="h-4 w-4" />}
+                label="Facultad"
+                value={product.faculty}
+              />
+              <InfoCard
+                icon={<UserIcon className="h-4 w-4" />}
+                label="Publicado por"
+                value={product.owner}
+              />
+              <InfoCard
+                icon={<CalendarClock className="h-4 w-4" />}
+                label="Fecha de publicación"
+                value={
+                  <time dateTime={product.createdAt}>
+                    {formatDate(product.createdAt)}
+                  </time>
+                }
+              />
             </section>
 
             {/* Botones de acción (desktop/tablet) */}
@@ -281,7 +347,8 @@ export default function ProductDetailPage() {
                 Estoy interesado
               </button>
               <button
-                onClick={() => setShowQR((v) => !v)}
+                /*onClick={() => setShowQR((v) => !v)}*/
+                onClick={() => setShowQR((v) => {const next = !v;  if (!next) setQrDataUrl(null); return next;})}
                 className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="h-5 w-5" />
@@ -292,16 +359,30 @@ export default function ProductDetailPage() {
             {/* QR */}
             {showQR && (
               <div className="mt-6 p-5 bg-white border border-gray-200 rounded-2xl flex flex-col items-center shadow-sm">
-                <h3 className="font-semibold mb-2 text-gray-900">Código QR del artículo</h3>
+                <h3 className="font-semibold mb-2 text-gray-900">
+                  Código QR del artículo
+                </h3>
                 <div className="bg-gray-100 p-4 rounded-xl">
-                  <img
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="Código QR del artículo"
+                      className="w-40 h-40"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-500">Generando QR…</span>
+                  )}
+                  {/*<img
                     src="/placeholder.svg?height=200&width=200"
                     alt="Código QR del artículo"
                     className="w-40 h-40"
                     loading="lazy"
-                  />
+                  />*/}
                 </div>
-                <p className="text-sm text-gray-500 mt-2">Escanea este código para compartir</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Escanea este código para compartir
+                </p>
               </div>
             )}
 
@@ -311,8 +392,12 @@ export default function ProductDetailPage() {
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div className="text-amber-900 text-sm leading-6">
-                Recuerda que los intercambios deben realizarse dentro del campus universitario por seguridad. La universidad no se hace responsable por transacciones realizadas fuera del campus.
-                <button className="ml-2 text-amber-800 underline decoration-amber-300 decoration-2 underline-offset-2 hover:opacity-90">Saber más</button>
+                Recuerda que los intercambios deben realizarse dentro del campus
+                universitario por seguridad. La universidad no se hace
+                responsable por transacciones realizadas fuera del campus.
+                <button className="ml-2 text-amber-800 underline decoration-amber-300 decoration-2 underline-offset-2 hover:opacity-90">
+                  Saber más
+                </button>
               </div>
             </div>
           </div>
@@ -325,10 +410,14 @@ export default function ProductDetailPage() {
           <div className="flex-1">
             {product.price > 0 ? (
               <div className="inline-flex items-baseline gap-2 rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-100">
-                <span className="text-xl font-extrabold text-emerald-700">{formatPrice(product.price)}</span>
+                <span className="text-xl font-extrabold text-emerald-700">
+                  {formatPrice(product.price)}
+                </span>
               </div>
             ) : (
-              <span className="text-lg font-bold text-emerald-700">{product.type === "Préstamo" ? "Préstamo" : "Gratis"}</span>
+              <span className="text-lg font-bold text-emerald-700">
+                {product.type === "Préstamo" ? "Préstamo" : "Gratis"}
+              </span>
             )}
           </div>
           <button
