@@ -1,412 +1,209 @@
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useLocation } from "react-router-dom";
-import { Filter, Search, ChevronDown } from "lucide-react";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { Search } from "lucide-react";
 import ProductCard from "../components/products/ProductCard";
+import { listItems, getCategories, getTypes } from "../services/items";
 
 export default function ProductsPage() {
-  const params = useParams();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  
-  // Estado para los filtros
+
+  // Filtros controlados
   const [filters, setFilters] = useState({
+    search: "",
     category: "",
     type: "",
-    priceRange: "",
-    sortBy: "recent",
+    sortBy: "recent", // recent | oldest | price_asc | price_desc | popular
+    page: 1,
+    limit: 12,
   });
 
-  // Estado para mostrar/ocultar filtros en móvil
-  const [showFilters, setShowFilters] = useState(false);
+  // Opciones de filtros desde el backend
+  const [categories, setCategories] = useState([]);
+  const [types, setTypes] = useState([]);
 
-  // Efecto para hacer scroll al inicio de la página cuando se carga
+  // Datos
+  const [items, setItems] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    currentPage: 1,
+    totalPages: 1,
+    limit: 12,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Sincroniza querystring → filtros (q, category, type, sort, page)
   useEffect(() => {
-    // Hacer scroll al inicio de la página
-    window.scrollTo(0, 0);
-  }, [location.pathname, location.search]);
+    const q = searchParams.get("q") || "";
+    const category = searchParams.get("category") || "";
+    const type = searchParams.get("type") || "";
+    const sortBy = searchParams.get("sort") || "recent";
+    const page = Number(searchParams.get("page") || 1);
 
-  // Efecto para establecer la categoría desde los parámetros de ruta o URL
+    setFilters((f) => ({
+      ...f,
+      search: q,
+      category,
+      type,
+      sortBy,
+      page,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
+  // Carga opciones de filtros
   useEffect(() => {
-    // Primero verificar si viene de una ruta de categoría
-    if (params.category) {
-      // Mapear las categorías de la URL a las categorías del sistema
-      const categoryMap = {
-        'libros': 'Libros',
-        'ropa': 'Ropa',
-        'electronicos': 'Electrónicos',
-        'utiles': 'Útiles'
-      };
-      
-      const mappedCategory = categoryMap[params.category];
-      if (mappedCategory) {
-        setFilters(prev => ({
-          ...prev,
-          category: mappedCategory
-        }));
+    (async () => {
+      try {
+        const [cats, tps] = await Promise.all([getCategories(), getTypes()]);
+        setCategories(cats);
+        setTypes(tps);
+      } catch {
+        // silenciar
       }
-    }
-    // Si no hay categoría en la ruta, verificar parámetros de URL
-    else {
-      const categoryFromUrl = searchParams.get('category');
-      if (categoryFromUrl) {
-        setFilters(prev => ({
-          ...prev,
-          category: categoryFromUrl
-        }));
+    })();
+  }, []);
+
+  // Llama a /items cuando cambian los filtros
+  useEffect(() => {
+    let cancel = false;
+    (async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const { list, pagination } = await listItems(filters);
+        if (!cancel) {
+          setItems(list);
+          setPagination(pagination);
+        }
+      } catch (e) {
+        if (!cancel) setError(e.message || "Error al cargar artículos");
+      } finally {
+        if (!cancel) setLoading(false);
       }
-    }
-  }, [params.category, searchParams]);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [JSON.stringify(filters)]);
 
-  // Datos de ejemplo para productos
-  const products = [
-    {
-      id: 1,
-      title: "Libro de Cálculo Avanzado",
-      category: "Libros",
-      type: "Venta",
-      price: 250,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Carlos Méndez",
-      createdAt: "2023-05-15",
-    },
-    {
-      id: 2,
-      title: "Laptop Dell Inspiron",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 4500,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Ana Gutiérrez",
-      createdAt: "2023-05-14",
-    },
-    {
-      id: 3,
-      title: "Sudadera Universitaria",
-      category: "Ropa",
-      type: "Regalo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Miguel Torres",
-      createdAt: "2023-05-13",
-    },
-    {
-      id: 4,
-      title: "Calculadora Científica",
-      category: "Útiles",
-      type: "Préstamo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Laura Sánchez",
-      createdAt: "2023-05-12",
-    },
-    {
-      id: 5,
-      title: "Libro de Programación en Python",
-      category: "Libros",
-      type: "Venta",
-      price: 180,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Roberto Díaz",
-      createdAt: "2023-05-11",
-    },
-    {
-      id: 6,
-      title: "Audífonos Bluetooth",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 800,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Patricia López",
-      createdAt: "2023-05-10",
-    },
-    {
-      id: 7,
-      title: "Mochila Universitaria",
-      category: "Útiles",
-      type: "Regalo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Fernando Ruiz",
-      createdAt: "2023-05-09",
-    },
-    {
-      id: 8,
-      title: "Guitarra Acústica",
-      category: "Otros",
-      type: "Préstamo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Daniela Morales",
-      createdAt: "2023-05-08",
-    },
-  ];
+  const totalPages = useMemo(
+    () => Math.max(1, Number(pagination?.totalPages || 1)),
+    [pagination]
+  );
 
-  // Opciones para los filtros
-  const categories = ["Libros", "Electrónicos", "Ropa", "Útiles", "Otros"];
-  const types = ["Venta", "Préstamo", "Regalo"];
-  const priceRanges = ["0-500", "500-1000", "1000-5000", "5000+"];
-  const sortOptions = [
-    { value: "recent", label: "Más recientes" },
-    { value: "oldest", label: "Más antiguos" },
-    { value: "price_asc", label: "Precio: menor a mayor" },
-    { value: "price_desc", label: "Precio: mayor a menor" },
-  ];
-
-  // Manejador de cambios en los filtros
-  const handleFilterChange = (filterName, value) => {
-    setFilters({
-      ...filters,
-      [filterName]: value,
-    });
+  const handleChangeFilter = (name, value) => {
+    setFilters((f) => ({ ...f, [name]: value, page: 1 }));
   };
-
-  // Función para aplicar filtros a los productos
-  const filteredProducts = products.filter((product) => {
-    if (filters.category && product.category !== filters.category) return false;
-    if (filters.type && product.type !== filters.type) return false;
-
-    if (filters.priceRange) {
-      const [min, max] = filters.priceRange.split("-").map(Number);
-      if (max) {
-        if (product.price < min || product.price > max) return false;
-      } else {
-        // Para el caso "5000+"
-        if (product.price < min) return false;
-      }
-    }
-
-    return true;
-  });
-
-  // Función para ordenar productos
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (filters.sortBy) {
-      case "oldest":
-        return new Date(a.createdAt) - new Date(b.createdAt);
-      case "price_asc":
-        return a.price - b.price;
-      case "price_desc":
-        return b.price - a.price;
-      case "recent":
-      default:
-        return new Date(b.createdAt) - new Date(a.createdAt);
-    }
-  });
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Explorar Artículos</h1>
+      {/* Encabezado */}
+      <header className="flex items-end justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Artículos</h1>
+          <p className="text-gray-500">
+            Explora los artículos publicados por la comunidad.
+          </p>
+        </div>
+      </header>
 
-      {/* Search and Filter Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div className="relative w-full md:w-96">
+      {/* Barra de filtros */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
-            type="text"
-            placeholder="Buscar artículos..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full pl-9 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Buscar por título o descripción"
+            value={filters.search}
+            onChange={(e) => handleChangeFilter("search", e.target.value)}
           />
-          <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
         </div>
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <button
-            className="md:hidden flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-lg"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-5 w-5" />
-            <span>Filtros</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${showFilters ? "rotate-180" : ""}`}
-            />
-          </button>
+        <select
+          className="px-3 py-2 border rounded-lg"
+          value={filters.category}
+          onChange={(e) => handleChangeFilter("category", e.target.value)}
+        >
+          <option value="">Todas las categorías</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
 
-          <div className="hidden md:block">
-            <select
-              value={filters.sortBy}
-              onChange={(e) => handleFilterChange("sortBy", e.target.value)}
-              className="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <select
+          className="px-3 py-2 border rounded-lg"
+          value={filters.type}
+          onChange={(e) => handleChangeFilter("type", e.target.value)}
+        >
+          <option value="">Todos los tipos</option>
+          {types.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+
+        <select
+          className="px-3 py-2 border rounded-lg"
+          value={filters.sortBy}
+          onChange={(e) => handleChangeFilter("sortBy", e.target.value)}
+        >
+          <option value="recent">Más recientes</option>
+          <option value="oldest">Más antiguos</option>
+          <option value="price_asc">Precio: menor a mayor</option>
+          <option value="price_desc">Precio: mayor a menor</option>
+          <option value="popular">Populares</option>
+        </select>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Filters Sidebar */}
-        <div className={`md:w-64 ${showFilters ? "block" : "hidden"} md:block`}>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <h2 className="font-semibold text-lg mb-4">Filtros</h2>
+      {/* Contenido */}
+      {loading && <p className="text-gray-500">Cargando...</p>}
+      {error && <p className="text-red-600">{error}</p>}
 
-            {/* Category Filter */}
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">Categoría</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="category-all"
-                    name="category"
-                    checked={filters.category === ""}
-                    onChange={() => handleFilterChange("category", "")}
-                    className="mr-2"
-                  />
-                  <label htmlFor="category-all">Todas</label>
-                </div>
-                {categories.map((category) => (
-                  <div key={category} className="flex items-center">
-                    <input
-                      type="radio"
-                      id={`category-${category}`}
-                      name="category"
-                      checked={filters.category === category}
-                      onChange={() => handleFilterChange("category", category)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={`category-${category}`}>{category}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {!loading && !error && (
+        <>
+          {items.length === 0 ? (
+            <div className="text-gray-600">No hay artículos.</div>
+          ) : (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {items.map((product) => (
+                <li key={product.id} className="bg-white rounded-xl shadow-sm border">
+                  <ProductCard product={product} />
+                </li>
+              ))}
+            </ul>
+          )}
 
-            {/* Type Filter */}
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">Tipo</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="type-all"
-                    name="type"
-                    checked={filters.type === ""}
-                    onChange={() => handleFilterChange("type", "")}
-                    className="mr-2"
-                  />
-                  <label htmlFor="type-all">Todos</label>
-                </div>
-                {types.map((type) => (
-                  <div key={type} className="flex items-center">
-                    <input
-                      type="radio"
-                      id={`type-${type}`}
-                      name="type"
-                      checked={filters.type === type}
-                      onChange={() => handleFilterChange("type", type)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={`type-${type}`}>{type}</label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Price Range Filter */}
-            <div className="mb-6">
-              <h3 className="font-medium mb-2">Rango de Precio</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="price-all"
-                    name="priceRange"
-                    checked={filters.priceRange === ""}
-                    onChange={() => handleFilterChange("priceRange", "")}
-                    className="mr-2"
-                  />
-                  <label htmlFor="price-all">Todos</label>
-                </div>
-                {priceRanges.map((range) => (
-                  <div key={range} className="flex items-center">
-                    <input
-                      type="radio"
-                      id={`price-${range}`}
-                      name="priceRange"
-                      checked={filters.priceRange === range}
-                      onChange={() => handleFilterChange("priceRange", range)}
-                      className="mr-2"
-                    />
-                    <label htmlFor={`price-${range}`}>
-                      {range.includes("+")
-                        ? `$${range.replace("+", "")}+`
-                        : `$${range.replace("-", " - $")}`}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Mobile Sort Options */}
-            <div className="md:hidden mb-6">
-              <h3 className="font-medium mb-2">Ordenar por</h3>
-              <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange("sortBy", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Reset Filters Button */}
+          {/* Paginación */}
+          <div className="mt-8 flex items-center justify-center gap-3">
             <button
+              className="px-3 py-2 rounded-lg border bg-white disabled:opacity-50"
+              disabled={filters.page <= 1}
               onClick={() =>
-                setFilters({
-                  category: "",
-                  type: "",
-                  priceRange: "",
-                  sortBy: "recent",
-                })
+                setFilters((f) => ({ ...f, page: Math.max(1, f.page - 1) }))
               }
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg transition-colors"
             >
-              Limpiar Filtros
+              Anterior
+            </button>
+            <span className="text-sm text-gray-600">
+              Página {pagination.currentPage} de {totalPages}
+            </span>
+            <button
+              className="px-3 py-2 rounded-lg border bg-white disabled:opacity-50"
+              disabled={filters.page >= totalPages}
+              onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
+            >
+              Siguiente
             </button>
           </div>
-        </div>
-
-        {/* Products Grid */}
-        <div className="flex-1">
-          {sortedProducts.length > 0 ? (
-            <>
-              <p className="text-gray-600 mb-4">
-                {sortedProducts.length} artículos encontrados
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-xl text-gray-600">
-                No se encontraron artículos con los filtros seleccionados.
-              </p>
-              <button
-                onClick={() =>
-                  setFilters({
-                    category: "",
-                    type: "",
-                    priceRange: "",
-                    sortBy: "recent",
-                  })
-                }
-                className="mt-4 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
-              >
-                Limpiar Filtros
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
