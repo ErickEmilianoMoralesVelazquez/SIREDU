@@ -8,6 +8,7 @@ import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import PublishProductPage from "./pages/PublishProductPage";
 import FavoritesPage from "./pages/FavoritesPage";
+import MyArticlesPage from "./pages/MyArticlesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProtectedRoute from "./components/ui/ProtectedRoute.jsx";
@@ -33,6 +34,7 @@ function AppContent() {
             {/* Ruta protegida para favoritos dentro del layout */}
             <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
               <Route path="favoritos" element={<FavoritesPage />} />
+              <Route path="mis-articulos" element={<MyArticlesPage />} />
             </Route>
           </Route>
 
