@@ -1,10 +1,10 @@
 "use client";
 
 import { Link } from "react-router-dom";
-import { Heart } from "lucide-react";
+import { Heart, Eye } from "lucide-react";
 import { useMemo } from "react";
 
-export default function ProductCard({ product, onToggleFavorite }) {
+export default function ProductCard({ product, onToggleFavorite, onShowInterested }) {
   const {
     id,
     image,
@@ -15,6 +15,7 @@ export default function ProductCard({ product, onToggleFavorite }) {
     category = "",
     isFavorite = false,
     favoriteCount = 0,
+    interestedCount = 0,
   } = product || {};
 
   const cover = useMemo(() => {
@@ -95,30 +96,11 @@ export default function ProductCard({ product, onToggleFavorite }) {
       {/* Contenido */}
       <div className="p-4">
         {category && (
-          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">
+          <p className="mb-1 text-xs uppercase tracking-wide text-gray-500">
             {category}
-          </div>
-
-          <button 
-            className={`transition-colors ${
-              product.isFavorite 
-                ? 'text-red-500' 
-                : 'text-gray-400 hover:text-red-500'
-            }`}
-          >
-            <Heart className={`h-5 w-5 ${product.isFavorite ? 'fill-current' : ''}`} />
-          </button>
-        </div>
-
-        {product.price > 0 ? (
-          <p className="text-lg font-bold text-emerald-600 mt-2">
-            ${product.price.toFixed(2)} MXN
-          </p>
-        ) : (
-          <p className="text-lg font-bold text-emerald-600 mt-2">
-            {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
           </p>
         )}
+
         <Link to={`/articulos/${id}`} className="block">
           <h3 className="line-clamp-2 text-base font-semibold text-gray-900 transition-colors group-hover:text-emerald-700">
             {title}
@@ -130,6 +112,16 @@ export default function ProductCard({ product, onToggleFavorite }) {
             <span className="text-sm font-medium">Precio</span>
             <div className="text-lg font-bold leading-tight">{priceLabel}</div>
           </div>
+
+          {interestedCount > 0 && (
+            <button
+              onClick={() => onShowInterested(product)}
+              className="flex items-center gap-1 text-sm text-gray-600 hover:text-emerald-600"
+            >
+              <Eye className="h-4 w-4" />
+              <span>{interestedCount}</span>
+            </button>
+          )}
 
           <Link
             to={`/articulos/${id}`}

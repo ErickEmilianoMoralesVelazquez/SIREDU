@@ -25,7 +25,9 @@ class ApiService {
           ).toString()
         : "";
 
-    const url = `${this.baseURL}${endpoint}${qs ? `?${qs}` : ""}`;
+    // Asegurar que el endpoint empiece con / si no lo tiene
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const url = `${this.baseURL}${normalizedEndpoint}${qs ? `?${qs}` : ""}`;
 
     // Token
     const token = localStorage.getItem("authToken");
@@ -37,11 +39,6 @@ class ApiService {
     const baseHeaders = isFormData
       ? {}
       : { "Content-Type": "application/json" };
-
-    // Asegurar que el endpoint empiece con / si no lo tiene
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const url = `${this.baseURL}${normalizedEndpoint}`;
-
 
     const config = {
       method: options.method || "GET",
