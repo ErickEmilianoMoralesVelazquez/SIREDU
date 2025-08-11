@@ -1,60 +1,104 @@
+"use client";
+
 import { Link } from "react-router-dom";
-import { Clock, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
+import { useMemo } from "react";
 
-export default function ProductCard({ product }) {
-  // Función para formatear la fecha
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat("es-MX", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date);
-  };
+export default function ProductCard({ product, onToggleFavorite }) {
+  const {
+    id,
+    image,
+    images = [],
+    title,
+    price = 0,
+    type = "",
+    category = "",
+    isFavorite = false,
+    favoriteCount = 0,
+  } = product || {};
 
-  // Función para determinar el color de fondo según el tipo de disponibilidad
-  const getTypeBadgeColor = (type) => {
-    switch (type) {
+  const cover = useMemo(() => {
+    const first = image || images[0] || "/placeholder.svg?height=300&width=300";
+    return first;
+  }, [image, images]);
+
+  const priceLabel =
+    price > 0
+      ? new Intl.NumberFormat("es-MX", {
+          style: "currency",
+          currency: "MXN",
+          maximumFractionDigits: 2,
+        }).format(price)
+      : type === "Préstamo"
+      ? "Préstamo"
+      : "Gratis";
+
+  const typeBadge = (t) => {
+    switch (t) {
       case "Venta":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-900 ring-blue-200";
       case "Préstamo":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-100 text-amber-900 ring-amber-200";
       case "Regalo":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-900 ring-green-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-900 ring-gray-200";
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-      <Link to={`/producto/${product.id}`}>
-        <div className="relative h-48 overflow-hidden">
+    <article className="group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-[transform,box-shadow] hover:-translate-y-[2px] hover:shadow-md">
+      {/* Imagen */}
+      <Link to={`/articulos/${id}`} className="block">
+        <div className="relative aspect-[4/3] bg-gray-50">
           <img
-            src={product.image || "/placeholder.svg"}
-            alt={product.title}
-            className="w-full h-full object-cover"
+            src={cover}
+            alt={title || "Artículo"}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
           />
-          <div
-            className={`absolute top-2 right-2 ${getTypeBadgeColor(product.type)} px-2 py-1 rounded-full text-xs font-medium`}
+          {/* Badge de tipo */}
+          {type && (
+            <span
+              className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${typeBadge(
+                type
+              )}`}
+            >
+              {type}
+            </span>
+          )}
+          {/* Botón favorito */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite?.(product);
+            }}
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 backdrop-blur text-gray-700 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-white"
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+            title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
           >
-            {product.type}
-          </div>
+            <Heart className={`h-5 w-5 ${isFavorite ? "fill-current text-emerald-600" : ""}`} />
+          </button>
+
+          {/* Contador de favoritos (opcional) */}
+          {favoriteCount > 0 && (
+            <span className="absolute bottom-3 right-3 rounded-full bg-white/85 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 shadow-sm">
+              {favoriteCount} ♥
+            </span>
+          )}
         </div>
       </Link>
-
+      {/* Contenido */}
       <div className="p-4">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-xs text-gray-500 uppercase">
-              {product.category}
-            </span>
-            <Link to={`/producto/${product.id}`}>
-              <h3 className="font-medium text-lg mb-1 hover:text-emerald-600 transition-colors line-clamp-1">
-                {product.title}
-              </h3>
-            </Link>
+        {category && (
+          <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">
+            {category}
           </div>
+
           <button 
             className={`transition-colors ${
               product.isFavorite 
@@ -75,15 +119,26 @@ export default function ProductCard({ product }) {
             {product.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
           </p>
         )}
+        <Link to={`/articulos/${id}`} className="block">
+          <h3 className="line-clamp-2 text-base font-semibold text-gray-900 transition-colors group-hover:text-emerald-700">
+            {title}
+          </h3>
+        </Link>
 
-        <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
-          <span>{product.owner}</span>
-          <div className="flex items-center">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>{formatDate(product.createdAt)}</span>
+        <div className="mt-3 flex items-center justify-between">
+          <div className="text-emerald-700">
+            <span className="text-sm font-medium">Precio</span>
+            <div className="text-lg font-bold leading-tight">{priceLabel}</div>
           </div>
+
+          <Link
+            to={`/articulos/${id}`}
+            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+          >
+            Ver detalle
+          </Link>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

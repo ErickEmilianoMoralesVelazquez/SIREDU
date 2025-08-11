@@ -1,54 +1,71 @@
+// backend/src/routes/items.routes.js
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import { fileURLToPath } from "url";
-import { getAllItems, getItemById, createItem, getCategories, getTypes, getFilterStats, advancedSearch } from "../controllers/items.controller.js";
+import fs from "fs";
+import {
+  getAllItems,
+  getItemById,
+  createItem,
+  getCategories,
+  getTypes,
+  getFilterStats,
+  advancedSearch,
+} from "../controllers/items.controller.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import { validateCreateItem } from "../middlewares/validation.middleware.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const router = Router();
 
+// ===== Carpeta de subidas: ./files en la raíz del proyecto =====
+const UPLOAD_DIR = path.join(process.cwd(), "files");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+// ===== Multer (guarda solo el filename) =====
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "../../../../files"));
+  destination: function (_req, _file, cb) {
+    cb(null, UPLOAD_DIR);
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+  filename: function (_req, file, cb) {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, unique);
+  },
 });
 
+const allowedTypes = /jpeg|jpg|png|gif|webp/;
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: function (_req, file, cb) {
+    const extname = allowedTypes.test(
+      path.extname(file.originalname || "").toLowerCase()
+    );
+    const mimetype = allowedTypes.test(file.mimetype || "");
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, gif, webp)"));
   },
-  fileFilter: function (req, file, cb) {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error("Solo se permiten archivos de imagen (jpeg, jpg, png, gif)"));
-    }
-  }
 });
 
+// ===== Rutas =====
+// (Asumiendo que en app.js montas: app.use("/items", itemsRouter))
 router.get("/", getAllItems);
 router.get("/search", advancedSearch);
 router.get("/categories", getCategories);
 router.get("/types", getTypes);
 router.get("/filter-stats", getFilterStats);
 router.get("/:id", getItemById);
-router.post("/", authenticateToken, upload.fields([
-  { name: 'picture1', maxCount: 1 },
-  { name: 'picture2', maxCount: 1 },
-  { name: 'picture3', maxCount: 1 }
-]), validateCreateItem, createItem);
+
+router.post(
+  "/",
+  authenticateToken,
+  upload.fields([
+    { name: "picture1", maxCount: 1 },
+    { name: "picture2", maxCount: 1 },
+    { name: "picture3", maxCount: 1 },
+  ]),
+  validateCreateItem,
+  createItem
+);
 
 export default router;

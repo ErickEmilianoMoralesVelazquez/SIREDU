@@ -21,6 +21,12 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+
+            {/* NUEVAS rutas */}
+            <Route path="articulos" element={<ProductsPage />} />
+            <Route path="articulos/:id" element={<ProductDetailPage />} />
+
+            {/* Compatibilidad con rutas existentes */}
             <Route path="productos" element={<ProductsPage />} />
             <Route path="producto/:id" element={<ProductDetailPage />} />
             <Route path="productos/:category" element={<ProductsPage />} />
@@ -29,22 +35,25 @@ function AppContent() {
               <Route path="favoritos" element={<FavoritesPage />} />
             </Route>
           </Route>
+
           {/* Rutas protegidas para usuarios autenticados */}
-          <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
+          <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}>
             <Route path="/publicar" element={<PublishProductPage />} />
           </Route>
+
           {/* Ruta protegida solo para admin */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}> 
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
           </Route>
+
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Router>
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </>
   );
 }
-
 
 function App() {
   return (

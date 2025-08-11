@@ -54,54 +54,84 @@ export const getItemById = async (req, res) => {
 
 export const createItem = async (req, res) => {
   try {
-    const { tittle, description, price, category, exchange_type, status } = req.body;
-    const user_id = req.user.id_user;
-
-    const imagePaths = {
-      picture1: null,
-      picture2: null,
-      picture3: null,
-    };
-
-    if (req.files) {
-      if (req.files.picture1 && req.files.picture1[0]) {
-        imagePaths.picture1 = req.files.picture1[0].filename;
-      }
-      if (req.files.picture2 && req.files.picture2[0]) {
-        imagePaths.picture2 = req.files.picture2[0].filename;
-      }
-      if (req.files.picture3 && req.files.picture3[0]) {
-        imagePaths.picture3 = req.files.picture3[0].filename;
-      }
+    // Requiere usuario autenticado
+    const user_id = req.user?.id_user ?? req.user?.id ?? null;
+    if (!user_id) {
+      return res.status(401).json({
+        success: false,
+        message: "No autenticado",
+      });
     }
 
-    const item = await Item.create({
+    // Acepta ambos nombres de campos desde el front
+    const {
       tittle,
-      description,
-      price: parseFloat(price) || 0,
-      category,
+      title,
+      description = "",
+      price,
+      category = "",
       exchange_type,
+      type,
+      status,
+    } = req.body;
+
+    const finalTitle = (tittle || title || "").trim();
+    if (!finalTitle) {
+      return res.status(400).json({
+        success: false,
+        message: "El título (tittle/title) es obligatorio",
+      });
+    }
+
+    // Normalización del tipo
+    const TYPE_MAP = {
+      venta: "Venta",
+      regalo: "Regalo",
+      prestamo: "Préstamo",
+      "préstamo": "Préstamo",
+    };
+    const rawType = String(exchange_type || type || "").trim();
+    const finalType = TYPE_MAP[rawType.toLowerCase()] || rawType;
+
+    const priceNum = Number(price || 0);
+
+    // Tomar solo filename de multer
+    const picture1 = req.files?.picture1?.[0]?.filename || null;
+    const picture2 = req.files?.picture2?.[0]?.filename || null;
+    const picture3 = req.files?.picture3?.[0]?.filename || null;
+
+    // Crear usando columnas reales del modelo
+    const item = await Item.create({
+      tittle: finalTitle,
+      description,
+      price: priceNum,
+      category,
+      exchange_type: finalType,
       status: status || "available",
       user_id,
-      ...imagePaths,
+      picture1,
+      picture2,
+      picture3,
     });
 
+    // Volver a leer con include de User (incluye id_user para el front)
     const itemWithUser = await Item.findByPk(item.id_item, {
       include: [
         {
           model: User,
-          attributes: ["username", "email"],
+          attributes: ["id_user", "username", "email"],
         },
       ],
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Artículo creado exitosamente",
       data: itemWithUser,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Error creando artículo:", error);
+    return res.status(500).json({
       success: false,
       message: "Error al crear el artículo",
       error: error.message,
@@ -187,57 +217,3 @@ export const advancedSearch = async (req, res) => {
     });
   }
 };
-
-/*
-EJEMPLO DE CÓMO SUBIR UN ARTÍCULO CON IMÁGENES:
-
-POST /items
-Content-Type: multipart/form-data
-Authorization: Bearer <tu_jwt_token>
-
-Form Data:
-- tittle: "Título del artículo"
-- description: "Descripción detallada del artículo"
-- price: 100.50 (opcional, número)
-- category: "Categoría del artículo"
-- exchange_type: "Venta" | "Préstamo" | "Regalo"
-- status: "available" (opcional, por defecto "available")
-- picture1: File1 (opcional, imagen para posición 1)
-- picture2: File2 (opcional, imagen para posición 2)  
-- picture3: File3 (opcional, imagen para posición 3)
-
-Ejemplo con curl:
-curl -X POST http://localhost:3001/items \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -F "tittle=Mi Artículo" \
-  -F "description=Descripción del artículo" \
-  -F "price=150.00" \
-  -F "category=Electrónicos" \
-  -F "exchange_type=Venta" \
-  -F "picture1=@/path/to/image1.jpg" \
-  -F "picture3=@/path/to/image3.jpg"
-
-Respuesta exitosa:
-{
-  "success": true,
-  "message": "Artículo creado exitosamente",
-  "data": {
-    "id_item": 1,
-    "tittle": "Mi Artículo",
-    "description": "Descripción del artículo",
-    "price": "150.00",
-    "category": "Electrónicos",
-    "exchange_type": "Venta",
-    "status": "available",
-    "picture1": "1234567890-image1.jpg",
-    "picture2": "1234567891-image2.jpg",
-    "picture3": null,
-    "created_at": "2024-01-01T12:00:00.000Z",
-    "user_id": 1,
-    "User": {
-      "username": "usuario",
-      "email": "usuario@email.com"
-    }
-  }
-}
-*/
