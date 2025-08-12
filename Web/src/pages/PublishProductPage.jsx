@@ -1,10 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Upload, X, Camera } from "lucide-react";
+import { createItem } from "../services/items.js";
+import { useToast } from "../context/ToastContext.jsx";
+
+const CATEGORY_OPTIONS = ["Libros", "Electrónicos", "Ropa", "Útiles", "Otros"];
+const TYPE_MAP = { venta: "Venta", regalo: "Regalo", prestamo: "Préstamo" };
 
 export default function PublishProductPage() {
+  const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -12,11 +20,12 @@ export default function PublishProductPage() {
     type: "",
     price: "",
     condition: "",
-    images: [],
+    images: [], // [{ file, preview }]
   });
 
   const [dragActive, setDragActive] = useState(false);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
   // Manejador para cambios en los campos del formulario
   const handleChange = (e) => {
@@ -26,130 +35,106 @@ export default function PublishProductPage() {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
-        // Resetear precio si el tipo no es venta
         ...(name === "type" && value !== "venta" ? { price: "" } : {}),
       }));
     } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
 
-    // Limpiar error del campo
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
   };
 
-  // Manejadores para drag and drop de imágenes
+  // Drag & drop imágenes
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileInput = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFiles(e.target.files);
-    }
+    if (e.target.files && e.target.files[0]) handleFiles(e.target.files);
   };
 
   const handleFiles = (files) => {
     if (formData.images.length + files.length > 3) {
-      setErrors((prev) => ({
-        ...prev,
-        images: "Solo puedes subir un máximo de 3 imágenes",
-      }));
+      setErrors((p) => ({ ...p, images: "Solo puedes subir un máximo de 3 imágenes" }));
       return;
     }
-
-    const newImages = Array.from(files).map((file) => {
-      return {
-        file,
-        preview: URL.createObjectURL(file),
-      };
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      images: [...prev.images, ...newImages],
+    const newImages = Array.from(files).map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
     }));
-
-    // Limpiar error de imágenes
-    if (errors.images) {
-      setErrors((prev) => ({
-        ...prev,
-        images: "",
-      }));
-    }
+    setFormData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }));
+    if (errors.images) setErrors((p) => ({ ...p, images: "" }));
   };
 
   const removeImage = (index) => {
-    const newImages = [...formData.images];
-    URL.revokeObjectURL(newImages[index].preview);
-    newImages.splice(index, 1);
-
-    setFormData((prev) => ({
-      ...prev,
-      images: newImages,
-    }));
+    const next = [...formData.images];
+    URL.revokeObjectURL(next[index].preview);
+    next.splice(index, 1);
+    setFormData((prev) => ({ ...prev, images: next }));
   };
 
-  // Validación del formulario
+  // Validación simple
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.title.trim()) newErrors.title = "El título es obligatorio";
-    if (!formData.description.trim())
-      newErrors.description = "La descripción es obligatoria";
+    if (!formData.description.trim()) newErrors.description = "La descripción es obligatoria";
     if (!formData.category) newErrors.category = "Selecciona una categoría";
     if (!formData.type) newErrors.type = "Selecciona un tipo de disponibilidad";
-    if (formData.type === "venta" && !formData.price)
-      newErrors.price = "Ingresa un precio";
+    if (formData.type === "venta" && !formData.price) newErrors.price = "Ingresa un precio";
     if (!formData.condition) newErrors.condition = "Selecciona una condición";
-    if (formData.images.length === 0)
-      newErrors.images = "Sube al menos una imagen";
-
+    if (formData.images.length === 0) newErrors.images = "Sube al menos una imagen";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Envío del formulario
-  const handleSubmit = (e) => {
+  // Envío al backend
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (validateForm()) {
-      // Aquí iría la lógica para enviar el formulario
-      console.log("Formulario enviado:", formData);
-      alert("¡Artículo publicado con éxito!");
+    // Mapear a lo que espera el backend
+    const categoryLabel =
+      CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) || formData.category;
+
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      category: categoryLabel,
+      type: TYPE_MAP[formData.type] || formData.type, // -> "Venta" | "Regalo" | "Préstamo"
+      price: formData.type === "venta" ? Number(formData.price || 0) : 0,
+      images: formData.images.map((img) => img.file).slice(0, 3),
+      // Nota: condition no existe en el modelo del back; si un día lo agregan, se envía aquí.
+    };
+
+    try {
+      setSubmitting(true);
+      const created = await createItem(payload);
+      showSuccess("¡Artículo publicado con éxito!");
+      if (created?.id) navigate(`/articulos/${created.id}`);
+      else navigate("/articulos");
+    } catch (err) {
+      showError(err.message || "No se pudo publicar el artículo");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <Link
-          to="/"
-          className="inline-flex items-center text-emerald-600 hover:text-emerald-700"
-        >
+        <Link to="/" className="inline-flex items-center text-emerald-600 hover:text-emerald-700">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver al inicio
         </Link>
@@ -169,10 +154,7 @@ export default function PublishProductPage() {
             <div className="space-y-6">
               {/* Título */}
               <div>
-                <label
-                  htmlFor="title"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
                   Título del artículo *
                 </label>
                 <input
@@ -181,12 +163,12 @@ export default function PublishProductPage() {
                   name="title"
                   value={formData.title}
                   onChange={handleChange}
-                  className={`w-full px-3 py-2 border ${errors.title ? "border-red-500" : "border-gray-300"} rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                  className={`w-full px-3 py-2 border ${
+                    errors.title ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
                   placeholder="Ej: Libro de Cálculo Diferencial"
                 />
-                {errors.title && (
-                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
-                )}
+                {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
               </div>
 
               {/* Descripción */}
@@ -203,47 +185,43 @@ export default function PublishProductPage() {
                   value={formData.description}
                   onChange={handleChange}
                   rows="4"
-                  className={`w-full px-3 py-2 border ${errors.description ? "border-red-500" : "border-gray-300"} rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                  className={`w-full px-3 py-2 border ${
+                    errors.description ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
                   placeholder="Describe el estado del artículo, detalles importantes, etc."
-                ></textarea>
+                />
                 {errors.description && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.description}
-                  </p>
+                  <p className="mt-1 text-sm text-red-500">{errors.description}</p>
                 )}
               </div>
 
               {/* Categoría */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Categoría *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {["Libros", "Electrónicos", "Ropa", "Útiles", "Otros"].map(
-                    (category) => (
-                      <div key={category}>
-                        <input
-                          type="radio"
-                          id={`category-${category}`}
-                          name="category"
-                          value={category.toLowerCase()}
-                          checked={formData.category === category.toLowerCase()}
-                          onChange={handleChange}
-                          className="sr-only"
-                        />
-                        <label
-                          htmlFor={`category-${category}`}
-                          className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
-                            formData.category === category.toLowerCase()
-                              ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                              : "border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          {category}
-                        </label>
-                      </div>
-                    ),
-                  )}
+                  {CATEGORY_OPTIONS.map((category) => (
+                    <div key={category}>
+                      <input
+                        type="radio"
+                        id={`category-${category}`}
+                        name="category"
+                        value={category.toLowerCase()}
+                        checked={formData.category === category.toLowerCase()}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor={`category-${category}`}
+                        className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
+                          formData.category === category.toLowerCase()
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                            : "border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {category}
+                      </label>
+                    </div>
+                  ))}
                 </div>
                 {errors.category && (
                   <p className="mt-1 text-sm text-red-500">{errors.category}</p>
@@ -284,24 +262,17 @@ export default function PublishProductPage() {
                     </div>
                   ))}
                 </div>
-                {errors.type && (
-                  <p className="mt-1 text-sm text-red-500">{errors.type}</p>
-                )}
+                {errors.type && <p className="mt-1 text-sm text-red-500">{errors.type}</p>}
               </div>
 
               {/* Precio (solo si es venta) */}
               {formData.type === "venta" && (
                 <div>
-                  <label
-                    htmlFor="price"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
                     Precio (MXN) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                      $
-                    </span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                     <input
                       type="number"
                       id="price"
@@ -310,54 +281,46 @@ export default function PublishProductPage() {
                       onChange={handleChange}
                       min="0"
                       step="0.01"
-                      className={`w-full pl-8 pr-4 py-2 border ${errors.price ? "border-red-500" : "border-gray-300"} rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                      className={`w-full pl-8 pr-4 py-2 border ${
+                        errors.price ? "border-red-500" : "border-gray-300"
+                      } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
                       placeholder="0.00"
                     />
                   </div>
-                  {errors.price && (
-                    <p className="mt-1 text-sm text-red-500">{errors.price}</p>
-                  )}
+                  {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
                 </div>
               )}
 
               {/* Condición */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Condición *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Condición *</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {["Nuevo", "Como nuevo", "Buen estado", "Usado"].map(
-                    (condition) => (
-                      <div key={condition}>
-                        <input
-                          type="radio"
-                          id={`condition-${condition}`}
-                          name="condition"
-                          value={condition.toLowerCase()}
-                          checked={
-                            formData.condition === condition.toLowerCase()
-                          }
-                          onChange={handleChange}
-                          className="sr-only"
-                        />
-                        <label
-                          htmlFor={`condition-${condition}`}
-                          className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
-                            formData.condition === condition.toLowerCase()
-                              ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                              : "border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          {condition}
-                        </label>
-                      </div>
-                    ),
-                  )}
+                  {["Nuevo", "Como nuevo", "Buen estado", "Usado"].map((condition) => (
+                    <div key={condition}>
+                      <input
+                        type="radio"
+                        id={`condition-${condition}`}
+                        name="condition"
+                        value={condition.toLowerCase()}
+                        checked={formData.condition === condition.toLowerCase()}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <label
+                        htmlFor={`condition-${condition}`}
+                        className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
+                          formData.condition === condition.toLowerCase()
+                            ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                            : "border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {condition}
+                      </label>
+                    </div>
+                  ))}
                 </div>
                 {errors.condition && (
-                  <p className="mt-1 text-sm text-red-500">
-                    {errors.condition}
-                  </p>
+                  <p className="mt-1 text-sm text-red-500">{errors.condition}</p>
                 )}
               </div>
             </div>
@@ -371,9 +334,7 @@ export default function PublishProductPage() {
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-lg p-6 ${
-                    dragActive
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-gray-300"
+                    dragActive ? "border-emerald-500 bg-emerald-50" : "border-gray-300"
                   } ${errors.images ? "border-red-500" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -384,16 +345,11 @@ export default function PublishProductPage() {
                     <Camera className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-600">
                       Arrastra y suelta imágenes aquí, o{" "}
-                      <label
-                        htmlFor="file-upload"
-                        className="text-emerald-600 hover:text-emerald-500 cursor-pointer"
-                      >
+                      <label htmlFor="file-upload" className="text-emerald-600 hover:text-emerald-500 cursor-pointer">
                         selecciona archivos
                       </label>
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      PNG, JPG, GIF hasta 5MB
-                    </p>
+                    <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
                     <input
                       id="file-upload"
                       name="file-upload"
@@ -405,11 +361,9 @@ export default function PublishProductPage() {
                     />
                   </div>
                 </div>
-                {errors.images && (
-                  <p className="mt-1 text-sm text-red-500">{errors.images}</p>
-                )}
+                {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
 
-                {/* Vista previa de imágenes */}
+                {/* Previews */}
                 {formData.images.length > 0 && (
                   <div className="mt-4 grid grid-cols-3 gap-4">
                     {formData.images.map((image, index) => (
@@ -422,7 +376,7 @@ export default function PublishProductPage() {
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -434,26 +388,12 @@ export default function PublishProductPage() {
 
               {/* Información adicional */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-medium text-blue-800 mb-2">
-                  Información importante
-                </h3>
+                <h3 className="font-medium text-blue-800 mb-2">Información importante</h3>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>
-                    • Los intercambios deben realizarse dentro del campus
-                    universitario.
-                  </li>
-                  <li>
-                    • Asegúrate de que las imágenes muestren claramente el
-                    estado del artículo.
-                  </li>
-                  <li>
-                    • No se permiten artículos prohibidos por el reglamento
-                    universitario.
-                  </li>
-                  <li>
-                    • Tu información de contacto solo será compartida con
-                    usuarios interesados.
-                  </li>
+                  <li>• Los intercambios deben realizarse dentro del campus universitario.</li>
+                  <li>• Asegúrate de que las imágenes muestren claramente el estado del artículo.</li>
+                  <li>• No se permiten artículos prohibidos por el reglamento universitario.</li>
+                  <li>• Tu información de contacto solo será compartida con usuarios interesados.</li>
                 </ul>
               </div>
 
@@ -461,28 +401,28 @@ export default function PublishProductPage() {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h3 className="font-medium mb-2">Código QR</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Se generará automáticamente un código QR para tu artículo una
-                  vez publicado. Podrás imprimirlo y colocarlo en lugares
-                  visibles del campus.
+                  Se generará automáticamente un código QR para tu artículo una vez publicado. Podrás
+                  imprimirlo y colocarlo en lugares visibles del campus.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Botones de acción */}
+          {/* Botones */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
             <Link
               to="/"
-              className="px-6 py-3 border border-gray-300 rounded-lg text-center font-medium hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 border border-gray-300 rounded-lg text-center font-medium hover:bg-gray-50"
             >
               Cancelar
             </Link>
             <button
               type="submit"
-              className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center"
+              disabled={submitting}
+              className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center"
             >
               <Upload className="h-5 w-5 mr-2" />
-              Publicar Artículo
+              {submitting ? "Publicando..." : "Publicar Artículo"}
             </button>
           </div>
         </form>

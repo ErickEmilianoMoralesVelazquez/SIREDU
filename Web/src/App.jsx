@@ -7,6 +7,8 @@ import HomePage from "./pages/HomePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import PublishProductPage from "./pages/PublishProductPage";
+import FavoritesPage from "./pages/FavoritesPage";
+import MyArticlesPage from "./pages/MyArticlesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProtectedRoute from "./components/ui/ProtectedRoute.jsx";
@@ -20,26 +22,40 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
+
+            {/* NUEVAS rutas */}
+            <Route path="articulos" element={<ProductsPage />} />
+            <Route path="articulos/:id" element={<ProductDetailPage />} />
+
+            {/* Compatibilidad con rutas existentes */}
             <Route path="productos" element={<ProductsPage />} />
             <Route path="producto/:id" element={<ProductDetailPage />} />
             <Route path="productos/:category" element={<ProductsPage />} />
+            {/* Ruta protegida para favoritos dentro del layout */}
+            <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
+              <Route path="favoritos" element={<FavoritesPage />} />
+              <Route path="mis-articulos" element={<MyArticlesPage />} />
+            </Route>
           </Route>
+
           {/* Rutas protegidas para usuarios autenticados */}
-          <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}> 
+          <Route element={<ProtectedRoute allowedRoles={['user', 'admin']} />}>
             <Route path="/publicar" element={<PublishProductPage />} />
           </Route>
+
           {/* Ruta protegida solo para admin */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}> 
+          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
           </Route>
+
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Router>
+
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </>
   );
 }
-
 
 function App() {
   return (
