@@ -116,10 +116,10 @@ export default function ProductDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [showQR, product.id]);
+  }, [showQR, item?.id]);
 
   const generarQRCode = async () => {
-    const url = `${urlbase}${product.id}`;
+    const url = `${urlbase}${item?.id}`;
     try {
       const qrBase64 = await QRCode.toDataURL(url, { width: 300, margin: 2 });
       return qrBase64;
@@ -128,6 +128,10 @@ export default function ProductDetailPage() {
       return "";
     }
   };
+
+  if (loading || !item) {
+    return <div className="container mx-auto px-4 py-8 text-center">Cargando...</div>;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
