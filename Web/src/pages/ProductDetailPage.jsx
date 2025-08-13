@@ -15,6 +15,8 @@ import {
   CalendarClock,
 } from "lucide-react";
 import InterestModal from "../components/products/InterestModal";
+import QRCode from "qrcode";
+import { jsPDF } from "jspdf";
 import { getItemById } from "../services/items";
 
 export default function ProductDetailPage() {
@@ -26,6 +28,8 @@ export default function ProductDetailPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [isFav, setIsFav] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const urlbase = "http://localhost:3000/producto/";
 
   // Carga del artículo
   useEffect(() => {
@@ -101,20 +105,32 @@ export default function ProductDetailPage() {
     } catch {}
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-gray-500">
-        Cargando artículo...
-      </div>
-    );
-  }
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!showQR) return;
+      const data = await generarQRCode();
+      if (!cancelled) setQrDataUrl(data || null);
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [showQR, item?.id]);
 
-  if (!item) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-red-600">
-        No se encontró el artículo.
-      </div>
-    );
+  const generarQRCode = async () => {
+    const url = `${urlbase}${item?.id}`;
+    try {
+      const qrBase64 = await QRCode.toDataURL(url, { width: 300, margin: 2 });
+      return qrBase64;
+    } catch (error) {
+      console.error("Error al generar el QR:", error);
+      return "";
+    }
+  };
+
+  if (loading || !item) {
+    return <div className="container mx-auto px-4 py-8 text-center">Cargando...</div>;
   }
 
   return (
@@ -316,7 +332,8 @@ export default function ProductDetailPage() {
                 Estoy interesado
               </button>
               <button
-                onClick={() => setShowQR((v) => !v)}
+                /*onClick={() => setShowQR((v) => !v)}*/
+                onClick={() => setShowQR((v) => {const next = !v;  if (!next) setQrDataUrl(null); return next;})}
                 className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="h-5 w-5" />
@@ -331,12 +348,22 @@ export default function ProductDetailPage() {
                   Código QR del artículo
                 </h3>
                 <div className="bg-gray-100 p-4 rounded-xl">
-                  <img
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt="Código QR del artículo"
+                      className="w-40 h-40"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="text-sm text-gray-500">Generando QR…</span>
+                  )}
+                  {/*<img
                     src="/placeholder.svg?height=200&width=200"
                     alt="Código QR del artículo"
                     className="w-40 h-40"
                     loading="lazy"
-                  />
+                  />*/}
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
                   Escanea este código para compartir
@@ -350,8 +377,8 @@ export default function ProductDetailPage() {
                 <AlertCircle className="h-5 w-5" />
               </div>
               <div className="text-amber-900 text-sm leading-6">
-                Recuerda que los intercambios deben realizarse dentro del
-                campus universitario por seguridad. La universidad no se hace
+                Recuerda que los intercambios deben realizarse dentro del campus
+                universitario por seguridad. La universidad no se hace
                 responsable por transacciones realizadas fuera del campus.
                 <button className="ml-2 text-amber-800 underline decoration-amber-300 decoration-2 underline-offset-2 hover:opacity-90">
                   Saber más
