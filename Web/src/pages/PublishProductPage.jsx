@@ -20,6 +20,7 @@ export default function PublishProductPage() {
     type: "",
     price: "",
     condition: "",
+    phoneNumber: "",
     images: [], // [{ file, preview }]
   });
 
@@ -28,8 +29,18 @@ export default function PublishProductPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Manejador para cambios en los campos del formulario
+  // Dentro de handleChange
   const handleChange = (e) => {
     const { name, value, type } = e.target;
+
+    // Validación en tiempo real solo para el teléfono
+    if (name === "phoneNumber") {
+      // Elimina todo lo que no sea número y limita a 10 caracteres
+      const numericValue = value.replace(/\D/g, "").slice(0, 10);
+      setFormData((prev) => ({ ...prev, [name]: numericValue }));
+      if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+      return;
+    }
 
     if (type === "radio") {
       setFormData((prev) => ({
@@ -67,14 +78,20 @@ export default function PublishProductPage() {
 
   const handleFiles = (files) => {
     if (formData.images.length + files.length > 3) {
-      setErrors((p) => ({ ...p, images: "Solo puedes subir un máximo de 3 imágenes" }));
+      setErrors((p) => ({
+        ...p,
+        images: "Solo puedes subir un máximo de 3 imágenes",
+      }));
       return;
     }
     const newImages = Array.from(files).map((file) => ({
       file,
       preview: URL.createObjectURL(file),
     }));
-    setFormData((prev) => ({ ...prev, images: [...prev.images, ...newImages] }));
+    setFormData((prev) => ({
+      ...prev,
+      images: [...prev.images, ...newImages],
+    }));
     if (errors.images) setErrors((p) => ({ ...p, images: "" }));
   };
 
@@ -89,12 +106,21 @@ export default function PublishProductPage() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = "El título es obligatorio";
-    if (!formData.description.trim()) newErrors.description = "La descripción es obligatoria";
+    if (!formData.description.trim())
+      newErrors.description = "La descripción es obligatoria";
     if (!formData.category) newErrors.category = "Selecciona una categoría";
     if (!formData.type) newErrors.type = "Selecciona un tipo de disponibilidad";
-    if (formData.type === "venta" && !formData.price) newErrors.price = "Ingresa un precio";
+    if (formData.type === "venta" && !formData.price)
+      newErrors.price = "Ingresa un precio";
     if (!formData.condition) newErrors.condition = "Selecciona una condición";
-    if (formData.images.length === 0) newErrors.images = "Sube al menos una imagen";
+    if (formData.images.length === 0)
+      newErrors.images = "Sube al menos una imagen";
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "El número de teléfono es obligatorio";
+    } else if (!/^\d{10}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber =
+        "El número de teléfono debe tener exactamente 10 dígitos";
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -106,7 +132,8 @@ export default function PublishProductPage() {
 
     // Mapear a lo que espera el backend
     const categoryLabel =
-      CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) || formData.category;
+      CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) ||
+      formData.category;
 
     const payload = {
       title: formData.title.trim(),
@@ -114,6 +141,7 @@ export default function PublishProductPage() {
       category: categoryLabel,
       type: TYPE_MAP[formData.type] || formData.type, // -> "Venta" | "Regalo" | "Préstamo"
       price: formData.type === "venta" ? Number(formData.price || 0) : 0,
+      phoneNumber: formData.phoneNumber.trim(),
       images: formData.images.map((img) => img.file).slice(0, 3),
       // Nota: condition no existe en el modelo del back; si un día lo agregan, se envía aquí.
     };
@@ -134,7 +162,10 @@ export default function PublishProductPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <Link to="/" className="inline-flex items-center text-emerald-600 hover:text-emerald-700">
+        <Link
+          to="/"
+          className="inline-flex items-center text-emerald-600 hover:text-emerald-700"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver al inicio
         </Link>
@@ -154,7 +185,10 @@ export default function PublishProductPage() {
             <div className="space-y-6">
               {/* Título */}
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
                   Título del artículo *
                 </label>
                 <input
@@ -168,7 +202,9 @@ export default function PublishProductPage() {
                   } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
                   placeholder="Ej: Libro de Cálculo Diferencial"
                 />
-                {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
+                {errors.title && (
+                  <p className="mt-1 text-sm text-red-500">{errors.title}</p>
+                )}
               </div>
 
               {/* Descripción */}
@@ -191,13 +227,17 @@ export default function PublishProductPage() {
                   placeholder="Describe el estado del artículo, detalles importantes, etc."
                 />
                 {errors.description && (
-                  <p className="mt-1 text-sm text-red-500">{errors.description}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.description}
+                  </p>
                 )}
               </div>
 
               {/* Categoría */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Categoría *
+                </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {CATEGORY_OPTIONS.map((category) => (
                     <div key={category}>
@@ -262,17 +302,24 @@ export default function PublishProductPage() {
                     </div>
                   ))}
                 </div>
-                {errors.type && <p className="mt-1 text-sm text-red-500">{errors.type}</p>}
+                {errors.type && (
+                  <p className="mt-1 text-sm text-red-500">{errors.type}</p>
+                )}
               </div>
 
               {/* Precio (solo si es venta) */}
               {formData.type === "venta" && (
                 <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label
+                    htmlFor="price"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
                     Precio (MXN) *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
                     <input
                       type="number"
                       id="price"
@@ -287,40 +334,76 @@ export default function PublishProductPage() {
                       placeholder="0.00"
                     />
                   </div>
-                  {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+                  {errors.price && (
+                    <p className="mt-1 text-sm text-red-500">{errors.price}</p>
+                  )}
                 </div>
               )}
 
               {/* Condición */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Condición *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Condición *
+                </label>
                 <div className="grid grid-cols-2 gap-3">
-                  {["Nuevo", "Como nuevo", "Buen estado", "Usado"].map((condition) => (
-                    <div key={condition}>
-                      <input
-                        type="radio"
-                        id={`condition-${condition}`}
-                        name="condition"
-                        value={condition.toLowerCase()}
-                        checked={formData.condition === condition.toLowerCase()}
-                        onChange={handleChange}
-                        className="sr-only"
-                      />
-                      <label
-                        htmlFor={`condition-${condition}`}
-                        className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
-                          formData.condition === condition.toLowerCase()
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                            : "border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {condition}
-                      </label>
-                    </div>
-                  ))}
+                  {["Nuevo", "Como nuevo", "Buen estado", "Usado"].map(
+                    (condition) => (
+                      <div key={condition}>
+                        <input
+                          type="radio"
+                          id={`condition-${condition}`}
+                          name="condition"
+                          value={condition.toLowerCase()}
+                          checked={
+                            formData.condition === condition.toLowerCase()
+                          }
+                          onChange={handleChange}
+                          className="sr-only"
+                        />
+                        <label
+                          htmlFor={`condition-${condition}`}
+                          className={`block border rounded-lg px-4 py-3 text-center cursor-pointer transition-colors ${
+                            formData.condition === condition.toLowerCase()
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-700"
+                              : "border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          {condition}
+                        </label>
+                      </div>
+                    )
+                  )}
                 </div>
                 {errors.condition && (
-                  <p className="mt-1 text-sm text-red-500">{errors.condition}</p>
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.condition}
+                  </p>
+                )}
+              </div>
+
+              {/* Número de Teléfono */}
+              <div>
+                <label
+                  htmlFor="phoneNumber"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Número de Teléfono *
+                </label>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className={`w-full px-3 py-2 border ${
+                    errors.phoneNumber ? "border-red-500" : "border-gray-300"
+                  } rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                  placeholder="Ej: 5512345678"
+                />
+                {errors.phoneNumber && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.phoneNumber}
+                  </p>
                 )}
               </div>
             </div>
@@ -334,7 +417,9 @@ export default function PublishProductPage() {
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-lg p-6 ${
-                    dragActive ? "border-emerald-500 bg-emerald-50" : "border-gray-300"
+                    dragActive
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-300"
                   } ${errors.images ? "border-red-500" : ""}`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -345,11 +430,16 @@ export default function PublishProductPage() {
                     <Camera className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-600">
                       Arrastra y suelta imágenes aquí, o{" "}
-                      <label htmlFor="file-upload" className="text-emerald-600 hover:text-emerald-500 cursor-pointer">
+                      <label
+                        htmlFor="file-upload"
+                        className="text-emerald-600 hover:text-emerald-500 cursor-pointer"
+                      >
                         selecciona archivos
                       </label>
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF hasta 5MB</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      PNG, JPG, GIF hasta 5MB
+                    </p>
                     <input
                       id="file-upload"
                       name="file-upload"
@@ -361,7 +451,9 @@ export default function PublishProductPage() {
                     />
                   </div>
                 </div>
-                {errors.images && <p className="mt-1 text-sm text-red-500">{errors.images}</p>}
+                {errors.images && (
+                  <p className="mt-1 text-sm text-red-500">{errors.images}</p>
+                )}
 
                 {/* Previews */}
                 {formData.images.length > 0 && (
@@ -388,12 +480,26 @@ export default function PublishProductPage() {
 
               {/* Información adicional */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-medium text-blue-800 mb-2">Información importante</h3>
+                <h3 className="font-medium text-blue-800 mb-2">
+                  Información importante
+                </h3>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Los intercambios deben realizarse dentro del campus universitario.</li>
-                  <li>• Asegúrate de que las imágenes muestren claramente el estado del artículo.</li>
-                  <li>• No se permiten artículos prohibidos por el reglamento universitario.</li>
-                  <li>• Tu información de contacto solo será compartida con usuarios interesados.</li>
+                  <li>
+                    • Los intercambios deben realizarse dentro del campus
+                    universitario.
+                  </li>
+                  <li>
+                    • Asegúrate de que las imágenes muestren claramente el
+                    estado del artículo.
+                  </li>
+                  <li>
+                    • No se permiten artículos prohibidos por el reglamento
+                    universitario.
+                  </li>
+                  <li>
+                    • Tu información de contacto solo será compartida con
+                    usuarios interesados.
+                  </li>
                 </ul>
               </div>
 
@@ -401,8 +507,9 @@ export default function PublishProductPage() {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <h3 className="font-medium mb-2">Código QR</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Se generará automáticamente un código QR para tu artículo una vez publicado. Podrás
-                  imprimirlo y colocarlo en lugares visibles del campus.
+                  Se generará automáticamente un código QR para tu artículo una
+                  vez publicado. Podrás imprimirlo y colocarlo en lugares
+                  visibles del campus.
                 </p>
               </div>
             </div>

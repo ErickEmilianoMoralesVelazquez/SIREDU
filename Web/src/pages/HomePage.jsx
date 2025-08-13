@@ -85,7 +85,7 @@ export default function HomePage() {
             </div>
             <div className="md:w-1/2 flex justify-center">
               <img
-                src="/placeholder.svg?height=400&width=500"
+                src="/estudiantes-intercambiando-objetos.jpg"
                 alt="Estudiantes intercambiando artículos"
                 className="rounded-lg shadow-xl max-w-full h-auto"
               />

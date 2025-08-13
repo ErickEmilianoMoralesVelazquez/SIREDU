@@ -91,7 +91,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-gray-300">
               <li className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <span>ecouni@universidad.edu</span>
+                <span>siredu@utez.edu.mx</span>
               </li>
               <li className="mt-4">
                 <h4 className="text-sm font-medium mb-2">Síguenos</h4>
@@ -122,7 +122,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
           <p>
-            © {new Date().getFullYear()} EcoUni. Todos los derechos reservados.
+            © {new Date().getFullYear()} SIREDU. Todos los derechos reservados.
           </p>
         </div>
       </div>

@@ -49,6 +49,7 @@ const adaptItem = (raw = {}) => {
             id_user: raw.User.id_user,
             username: raw.User.username,
             email: raw.User.email,
+            phoneNumber: raw.User.phoneNumber,
           }
         : undefined),
   };
@@ -201,6 +202,7 @@ export async function createItem(payload) {
   fd.append("category", category);
   fd.append("exchange_type", exchangeType);
   fd.append("type", exchangeType);
+  fd.append("phoneNumber", payload.phoneNumber);
 
   // Archivos: picture1..3
   const files = Array.isArray(payload.images) ? payload.images : [];
