@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -31,6 +31,9 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
+  // Ref para evitar doble navegación: si ya redirigimos manualmente, el useEffect no debe empujar a "/"
+  const redirectedRef = useRef(false);
+
   // Verificar si el parámetro mode=register está en la URL
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -40,19 +43,18 @@ export default function LoginPage() {
     }
   }, [location.search]);
 
-  // Redirect if already authenticated
+  // Si ya está autenticado y entra a esta página, llévalo a "/" una sola vez.
+  // Usamos la ref para no sobreescribir una redirección manual (por rol) que acabamos de hacer.
   useEffect(() => {
+    if (redirectedRef.current) return;
     if (isAuthenticated) {
-      navigate("/");
+      navigate("/", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const sanitizedValue =
-      name === "name"
-        ? value // permitir espacios para el nombre
-        : sanitizeInput(value); // sanitizar el resto
+    const { name, value } = e.target;
+    const sanitizedValue = name === "name" ? value : sanitizeInput(value); // permitir espacios en nombre
 
     setFormData((prev) => ({
       ...prev,
@@ -74,12 +76,9 @@ export default function LoginPage() {
 
     // Validación por campo (onBlur) con CONTEXTO
     if (touched[name] || value) {
-      const error = validateFieldRealTime(
-        name,
-        value,
-        formData,
-        { context: mode } // <- clave: en login NO aplica fortaleza de contraseña
-      );
+      const error = validateFieldRealTime(name, value, formData, {
+        context: mode,
+      });
       setErrors((prev) => ({
         ...prev,
         [name]: error || "",
@@ -90,26 +89,25 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Flujo de recuperación: validación mínima del correo
     if (mode === "recovery") {
-    try {
-      // validación mínima
-      if (!formData.email) {
-        setErrors((prev) => ({ ...prev, email: "Email es requerido" }));
-        setTouched((prev) => ({ ...prev, email: true }));
-        return;
+      try {
+        if (!formData.email) {
+          setErrors((prev) => ({ ...prev, email: "Email es requerido" }));
+          setTouched((prev) => ({ ...prev, email: true }));
+          return;
+        }
+        await authService.requestPasswordReset(formData.email);
+        showSuccess("Si el correo existe, te enviamos instrucciones.");
+        setMode("login");
+        setFormData({ email: "", password: "", name: "", confirmPassword: "" });
+        setErrors({});
+        setTouched({});
+      } catch (err) {
+        showError(err.message || "No se pudo solicitar la recuperación");
       }
-      await authService.requestPasswordReset(formData.email);
-
-      showSuccess("Si el correo existe, te enviamos instrucciones.");
-      setMode("login");
-      setFormData({ email: "", password: "", name: "", confirmPassword: "" });
-      setErrors({});
-      setTouched({});
-    } catch (err) {
-      showError(err.message || "No se pudo solicitar la recuperación");
+      return;
     }
-    return;
-  }
 
     // Validación del formulario completo
     const validation =
@@ -136,18 +134,20 @@ export default function LoginPage() {
         });
 
         if (result.success) {
+          // ✅ Redirección INMEDIATA según rol (sin setTimeout)
+          redirectedRef.current = true; // evita que el useEffect navegue a "/"
+          if (result.user && result.user.role === "admin") {
+            navigate("/admin", { replace: true });
+          } else {
+            navigate("/", { replace: true });
+          }
+          // El toast es global; seguirá visible tras la navegación
           showSuccess("¡Bienvenido! Has iniciado sesión correctamente");
-          setTimeout(() => {
-            if (result.user && result.user.role === "admin") {
-              navigate("/admin");
-            } else {
-              navigate("/");
-            }
-          }, 2000);
         } else {
           showError(result.error || "Error al iniciar sesión");
         }
       } else {
+        // Registro
         const result = await register({
           username: formData.name.split(" ")[0], // primer nombre como username
           name: formData.name,
@@ -156,19 +156,19 @@ export default function LoginPage() {
         });
 
         if (result.success) {
-          showSuccess("¡Cuenta creada exitosamente! Ahora puedes iniciar sesión");
-          setTimeout(() => {
-            // Volver a login reutilizando el email
-            setMode("login");
-            setFormData({
-              email: formData.email,
-              password: "",
-              name: "",
-              confirmPassword: "",
-            });
-            setErrors({});
-            setTouched({});
-          }, 2000);
+          // ✅ Cambiar inmediatamente a login (sin esperas)
+          showSuccess(
+            "¡Cuenta creada exitosamente! Ahora puedes iniciar sesión"
+          );
+          setMode("login");
+          setFormData({
+            email: formData.email, // reutiliza el email para facilitar el inicio de sesión
+            password: "",
+            name: "",
+            confirmPassword: "",
+          });
+          setErrors({});
+          setTouched({});
         } else {
           showError(result.error || "Error al crear la cuenta");
         }
@@ -349,7 +349,9 @@ export default function LoginPage() {
                           : "border-gray-300 focus:ring-emerald-500"
                       }`}
                       placeholder="••••••••"
-                      autoComplete={mode === "login" ? "current-password" : "new-password"}
+                      autoComplete={
+                        mode === "login" ? "current-password" : "new-password"
+                      }
                     />
                     <button
                       type="button"
@@ -364,7 +366,9 @@ export default function LoginPage() {
                     </button>
                   </div>
                   {errors.password && touched.password && (
-                    <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
               )}
@@ -403,8 +407,6 @@ export default function LoginPage() {
                   )}
                 </div>
               )}
-
-              {/* ...eliminado el checkbox de términos y condiciones... */}
 
               {/* Forgot Password (solo en login) */}
               {mode === "login" && (
