@@ -128,6 +128,39 @@ class AuthService {
   initializeAuth() {
     return this.isAuthenticated() ? this.getCurrentUser() : null;
   }
+
+  // --- Recuperación de contraseña ---
+
+  // 1) Solicitar envío del correo (POST /auth/forgot-password)
+  async requestPasswordReset(email) {
+    try {
+      const res = await apiService.post('/auth/forgot-password', { email });
+      // el backend siempre responde 200 con mensaje genérico
+      return res; // { message: 'Si el correo existe, enviamos instrucciones.' }
+    } catch (e) {
+      throw new Error(e.message || 'No se pudo solicitar la recuperación');
+    }
+  }
+
+  // 2) Validar token del enlace (POST /auth/validate-reset-token)
+  async validateResetToken({ token, email }) {
+    try {
+      const res = await apiService.post('/auth/validate-reset-token', { token, email });
+      return res; // { valid: true/false }
+    } catch {
+      return { valid: false };
+    }
+  }
+
+  // 3) Poner nueva contraseña (POST /auth/reset-password)
+  async resetPassword({ email, token, newPassword }) {
+    try {
+      const res = await apiService.post('/auth/reset-password', { email, token, newPassword });
+      return res; // { message: 'Contraseña actualizada correctamente' }
+    } catch (e) {
+      throw new Error(e.message || 'No se pudo actualizar la contraseña');
+    }
+  }
 }
 
 export const authService = new AuthService();

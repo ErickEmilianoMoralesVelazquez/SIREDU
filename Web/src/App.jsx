@@ -12,6 +12,7 @@ import MyArticlesPage from "./pages/MyArticlesPage";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ProtectedRoute from "./components/ui/ProtectedRoute.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 
 function AppContent() {
   const { toasts, removeToast } = useToast();
@@ -49,6 +50,7 @@ function AppContent() {
           </Route>
 
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </Router>
 

@@ -12,6 +12,7 @@ import {
   sanitizeInput,
 } from "../utils/validation.js";
 import { ButtonLoader } from "../components/ui/Loader.jsx";
+import { authService } from "../services/authService.js";
 
 export default function LoginPage() {
   const location = useLocation();
@@ -90,13 +91,25 @@ export default function LoginPage() {
     e.preventDefault();
 
     if (mode === "recovery") {
-      showSuccess("Se ha enviado un enlace de recuperación a tu correo electrónico");
+    try {
+      // validación mínima
+      if (!formData.email) {
+        setErrors((prev) => ({ ...prev, email: "Email es requerido" }));
+        setTouched((prev) => ({ ...prev, email: true }));
+        return;
+      }
+      await authService.requestPasswordReset(formData.email);
+
+      showSuccess("Si el correo existe, te enviamos instrucciones.");
       setMode("login");
-  setFormData({ email: "", password: "", name: "", confirmPassword: "" });
+      setFormData({ email: "", password: "", name: "", confirmPassword: "" });
       setErrors({});
       setTouched({});
-      return;
+    } catch (err) {
+      showError(err.message || "No se pudo solicitar la recuperación");
     }
+    return;
+  }
 
     // Validación del formulario completo
     const validation =
