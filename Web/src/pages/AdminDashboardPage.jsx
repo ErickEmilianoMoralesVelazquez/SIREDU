@@ -148,23 +148,39 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Topbar admin */}
-      <div className="w-full bg-emerald-700 text-white flex justify-end items-center px-6 py-2 shadow-sm">
-        <div className="relative group">
-          <button className="flex items-center space-x-2 focus:outline-none">
-            <span className="font-medium">{user?.name || user?.username || "Admin"}</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          <div className="absolute right-0 mt-2 w-40 bg-white text-gray-800 rounded shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50">
-            <button
-              onClick={() => setShowConfirmLogout(true)}
-              className="block w-full text-left px-4 py-2 hover:bg-emerald-100"
-            >
-              Cerrar sesión
+      {/* Topbar admin mejorada */}
+      <header className="w-full bg-white shadow-sm border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between h-16">
+          {/* Logo y título */}
+          <div className="flex items-center space-x-3">
+            <img src="/vite.svg" alt="Logo" className="h-9 w-9 rounded-full bg-emerald-100 p-1 shadow" />
+            <span className="text-xl font-bold text-emerald-700 tracking-tight select-none">SIREDU Admin</span>
+          </div>
+          {/* Perfil y menú */}
+          <div className="relative group">
+            <button className="flex items-center space-x-3 px-3 py-1 rounded-full bg-emerald-50 hover:bg-emerald-100 transition focus:outline-none border border-emerald-100 shadow-sm">
+              <span className="font-semibold text-emerald-900 text-sm">{user?.name || user?.username || "Admin"}</span>
+              {/* Avatar genérico */}
+              <span className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-emerald-600 text-white font-bold text-lg border-2 border-white shadow">
+                {(user?.name || user?.username || "A").charAt(0).toUpperCase()}
+              </span>
+              <svg className="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
             </button>
+            <div className="absolute right-0 mt-2 w-44 bg-white text-gray-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50 border border-gray-100">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <div className="font-semibold text-emerald-800 text-sm truncate">{user?.email || "admin@utez.edu.mx"}</div>
+                <div className="text-xs text-gray-400">Administrador</div>
+              </div>
+              <button
+                onClick={() => setShowConfirmLogout(true)}
+                className="block w-full text-left px-4 py-2 hover:bg-emerald-50 text-emerald-700 font-medium rounded-b-lg transition"
+              >
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
       <ConfirmDialog
         open={showConfirmLogout}
         title="¿Cerrar sesión?"
