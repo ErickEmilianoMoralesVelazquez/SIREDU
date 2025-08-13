@@ -4,7 +4,6 @@ import ProductCard from "../components/products/ProductCard";
 import { useFeaturedItems } from "../hooks/useFeaturedItems";
 import { useStats } from "../hooks/useStats";
 import ItemsLoader from "../components/ui/ItemsLoader";
-import ApiStatus from "../components/ui/ApiStatus";
 
 export default function HomePage() {
   // Usar hooks para obtener datos del backend
@@ -13,7 +12,6 @@ export default function HomePage() {
 
   return (
     <div>
-      <ApiStatus />
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-emerald-700 to-emerald-900 text-white py-16">
         <div className="container mx-auto px-4">
