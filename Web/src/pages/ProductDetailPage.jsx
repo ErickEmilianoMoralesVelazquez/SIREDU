@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import InterestModal from "../components/products/InterestModal";
 import QRCode from "qrcode";
-import { jsPDF } from "jspdf";
 import { getItemById } from "../services/items";
 
 export default function ProductDetailPage() {
@@ -89,10 +88,15 @@ export default function ProductDetailPage() {
       case "Préstamo":
         return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
       case "Regalo":
-        return "bg-green-100 text-green-900 ring-1 ring-green-200";
+        return "bg-green-100 text-green-900 ring-1 ring-blue-200";
       default:
         return "bg-gray-100 text-gray-900 ring-1 ring-gray-200";
     }
+  };
+
+  // Función auxiliar para simplificar el estado del artículo
+  const isItemAvailable = (status) => {
+    return status === "available";
   };
 
   const canShare =
@@ -102,7 +106,9 @@ export default function ProductDetailPage() {
     try {
       if (canShare) await navigator.share({ title: item?.title, url });
       else await navigator.clipboard.writeText(url);
-    } catch {}
+         } catch (error) {
+       console.error("Error sharing:", error);
+     }
   };
 
   useEffect(() => {
@@ -239,50 +245,56 @@ export default function ProductDetailPage() {
                     {item.title}
                   </h1>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                      isFav ? "ring-1 ring-emerald-200" : ""
-                    }`}
-                    aria-pressed={isFav}
-                    onClick={() => setIsFav((v) => !v)}
-                  >
-                    <Heart
-                      className={`h-5 w-5 ${
-                        isFav ? "fill-current text-emerald-600" : ""
-                      }`}
-                    />
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    aria-label="Compartir"
-                    title={canShare ? "Compartir" : "Copiar enlace"}
-                  >
-                    <Share2 className="h-5 w-5" />
-                  </button>
-                </div>
+                                 <div className="flex flex-col items-end gap-2">
+                   <div className="flex items-center gap-2">
+                     <button
+                       className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                         isFav ? "ring-1 ring-emerald-200" : ""
+                       }`}
+                       aria-pressed={isFav}
+                       onClick={() => setIsFav((v) => !v)}
+                     >
+                       <Heart
+                         className={`h-5 w-5 ${
+                           isFav ? "fill-current text-emerald-600" : ""
+                         }`}
+                       />
+                     </button>
+                     <button
+                       onClick={handleShare}
+                       className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                       aria-label="Compartir"
+                       title={canShare ? "Compartir" : "Copiar enlace"}
+                     >
+                       <Share2 className="h-5 w-5" />
+                     </button>
+                   </div>
+                   
+
+                 </div>
               </div>
 
-              {/* Precio destacado */}
-              <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
-                {item.price > 0 ? (
-                  <p className="text-3xl font-extrabold text-emerald-700">
-                    {new Intl.NumberFormat("es-MX", {
-                      style: "currency",
-                      currency: "MXN",
-                      maximumFractionDigits: 2,
-                    }).format(item.price)}
-                  </p>
-                ) : (
-                  <p className="text-2xl font-bold text-emerald-700">
-                    {item.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
-                  </p>
-                )}
-                <span className="text-xs text-emerald-700/70">
-                  Precio sugerido por el publicador
-                </span>
-              </div>
+                             {/* Precio destacado */}
+               <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
+                 {item.price > 0 ? (
+                   <p className="text-3xl font-extrabold text-emerald-700">
+                     {new Intl.NumberFormat("es-MX", {
+                       style: "currency",
+                       currency: "MXN",
+                       maximumFractionDigits: 2,
+                     }).format(item.price)}
+                   </p>
+                 ) : (
+                   <p className="text-2xl font-bold text-emerald-700">
+                     {item.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
+                   </p>
+                 )}
+                 <span className="text-xs text-emerald-700/70">
+                   Precio sugerido por el publicador
+                 </span>
+               </div>
+               
+                             
             </div>
 
             <div className="h-px w-full bg-gray-200/70 mb-6" />
@@ -326,10 +338,15 @@ export default function ProductDetailPage() {
             {/* Acciones */}
             <div className="hidden sm:flex flex-col sm:flex-row gap-3 mt-auto">
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex-1 bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-700 transition-all shadow-sm hover:shadow md:active:translate-y-[1px]"
+                onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
+                disabled={!isItemAvailable(item.status)}
+                className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm hover:shadow md:active:translate-y-[1px] ${
+                  isItemAvailable(item.status)
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
               >
-                Estoy interesado
+                {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
               </button>
               <button
                 /*onClick={() => setShowQR((v) => !v)}*/
@@ -409,10 +426,15 @@ export default function ProductDetailPage() {
             )}
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex-1 bg-emerald-600 text-white py-3 rounded-full font-medium hover:bg-emerald-700 transition-all shadow-sm"
+            onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
+            disabled={!isItemAvailable(item.status)}
+            className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm ${
+              isItemAvailable(item.status)
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
-            Estoy interesado
+            {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
           </button>
         </div>
       </div>
@@ -421,7 +443,7 @@ export default function ProductDetailPage() {
       <InterestModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        phoneNumber={item.user?.phoneNumber}
+        phoneNumber={item.phoneNumber}
       />
     </div>
   );

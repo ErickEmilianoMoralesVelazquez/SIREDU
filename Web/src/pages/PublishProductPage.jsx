@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Upload, X, Camera } from "lucide-react";
-import { createItem } from "../services/items.js";
+import { createItem, updateItem } from "../services/items.js";
 import { useToast } from "../context/ToastContext.jsx";
 
 const CATEGORY_OPTIONS = ["Libros", "Electrónicos", "Ropa", "Útiles", "Otros"];
@@ -11,7 +11,12 @@ const TYPE_MAP = { venta: "Venta", regalo: "Regalo", prestamo: "Préstamo" };
 
 export default function PublishProductPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showSuccess, showError } = useToast();
+
+  // Detectar si estamos en modo edición
+  const isEditMode = location.state?.editMode;
+  const itemToEdit = location.state?.itemData;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -27,6 +32,66 @@ export default function PublishProductPage() {
   const [dragActive, setDragActive] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Cargar datos del artículo si estamos en modo edición
+  useEffect(() => {
+    if (!isEditMode || !itemToEdit) return;
+
+    const normalize = (value) =>
+      (value ?? "")
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+
+    // Map category from item to the exact lowercase label used by UI radios
+    const resolvedCategory = (() => {
+      const normalizedIncoming = normalize(itemToEdit.category);
+      const matchedOption = CATEGORY_OPTIONS.find(
+        (opt) => normalize(opt) === normalizedIncoming
+      );
+      return matchedOption ? matchedOption.toLowerCase() : (itemToEdit.category || "").toLowerCase();
+    })();
+
+    // Map type label (e.g., "Venta" | "Regalo" | "Préstamo") to radio values (venta|regalo|prestamo)
+    const resolvedType = (() => {
+      const t = normalize(itemToEdit.type);
+      if (t === "venta") return "venta";
+      if (t === "regalo") return "regalo";
+      if (t === "prestamo" || t === "prestamo" /* already normalized */) return "prestamo";
+      // Fallback: if coming already as code
+      if (["venta", "regalo", "prestamo"].includes(t)) return t;
+      return "";
+    })();
+
+    // Map condition to one of: "nuevo" | "como nuevo" | "buen estado" | "usado"
+    const resolvedCondition = (() => {
+      const c = normalize(itemToEdit.condition);
+      if (c.includes("como") && c.includes("nuevo")) return "como nuevo";
+      if (c.includes("buen") && c.includes("estado")) return "buen estado";
+      if (c.includes("nuevo")) return "nuevo";
+      if (c.includes("usado")) return "usado";
+      // default sensible fallback
+      return "usado";
+    })();
+
+    setFormData({
+      title: itemToEdit.title || "",
+      description: itemToEdit.description || "",
+      category: resolvedCategory,
+      type: resolvedType,
+      price: itemToEdit.price > 0 ? String(itemToEdit.price) : "",
+      condition: resolvedCondition,
+      phoneNumber: itemToEdit.phoneNumber || "",
+      images:
+        itemToEdit.images?.map((img) => ({
+          file: null,
+          preview: img,
+          isExisting: true,
+        })) || [],
+    });
+  }, [isEditMode, itemToEdit]);
 
   // Manejador para cambios en los campos del formulario
   // Dentro de handleChange
@@ -129,31 +194,53 @@ export default function PublishProductPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
-    // Mapear a lo que espera el backend
-    const categoryLabel =
-      CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) ||
-      formData.category;
-
-    const payload = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      category: categoryLabel,
-      type: TYPE_MAP[formData.type] || formData.type, // -> "Venta" | "Regalo" | "Préstamo"
-      price: formData.type === "venta" ? Number(formData.price || 0) : 0,
-      phoneNumber: formData.phoneNumber.trim(),
-      images: formData.images.map((img) => img.file).slice(0, 3),
-      // Nota: condition no existe en el modelo del back; si un día lo agregan, se envía aquí.
-    };
-
     try {
       setSubmitting(true);
-      const created = await createItem(payload);
-      showSuccess("¡Artículo publicado con éxito!");
-      if (created?.id) navigate(`/articulos/${created.id}`);
-      else navigate("/articulos");
+
+      if (isEditMode) {
+        // Modo edición: actualizar artículo existente usando service para mapear a FormData
+        const categoryLabel =
+          CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) || formData.category;
+
+        const payload = {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: categoryLabel,
+          type: formData.type, // "venta" | "regalo" | "prestamo"
+          price: formData.type === "venta" ? Number(formData.price || 0) : 0,
+          phoneNumber: formData.phoneNumber.trim(),
+          images: formData.images
+            .filter((img) => !img.isExisting && img.file)
+            .map((img) => img.file)
+            .slice(0, 3),
+        };
+
+        await updateItem(itemToEdit.id, payload);
+        showSuccess("¡Artículo actualizado con éxito!");
+        navigate("/mis-articulos");
+      } else {
+        // Modo creación: crear nuevo artículo
+        const categoryLabel =
+          CATEGORY_OPTIONS.find((c) => c.toLowerCase() === formData.category) || formData.category;
+
+        const payload = {
+          title: formData.title.trim(),
+          description: formData.description.trim(),
+          category: categoryLabel,
+          type: formData.type, // "venta" | "regalo" | "prestamo"; el service lo mapea al backend
+          price: formData.type === "venta" ? Number(formData.price || 0) : 0,
+          phoneNumber: formData.phoneNumber.trim(),
+          images: formData.images.map((img) => img.file).slice(0, 3),
+          // Nota: condition no existe en el modelo del back; si un día lo agregan, se envía aquí.
+        };
+
+        const created = await createItem(payload);
+        showSuccess("¡Artículo publicado con éxito!");
+        if (created?.id) navigate(`/articulos/${created.id}`);
+        else navigate("/articulos");
+      }
     } catch (err) {
-      showError(err.message || "No se pudo publicar el artículo");
+      showError(err.message || "No se pudo procesar el artículo");
     } finally {
       setSubmitting(false);
     }
@@ -162,20 +249,25 @@ export default function PublishProductPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <Link
-          to="/"
+        <Link 
+          to={isEditMode ? "/mis-articulos" : "/"} 
           className="inline-flex items-center text-emerald-600 hover:text-emerald-700"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver al inicio
+          {isEditMode ? "Volver a mis artículos" : "Volver al inicio"}
         </Link>
       </div>
 
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="bg-emerald-700 text-white p-6">
-          <h1 className="text-2xl font-bold">Publicar un Artículo</h1>
+          <h1 className="text-2xl font-bold">
+            {isEditMode ? "Editar Artículo" : "Publicar un Artículo"}
+          </h1>
           <p className="text-emerald-100">
-            Comparte artículos que ya no uses con la comunidad universitaria
+            {isEditMode 
+              ? "Modifica los detalles de tu artículo publicado"
+              : "Comparte artículos que ya no uses con la comunidad universitaria"
+            }
           </p>
         </div>
 
@@ -518,7 +610,7 @@ export default function PublishProductPage() {
           {/* Botones */}
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-end">
             <Link
-              to="/"
+              to={isEditMode ? "/mis-articulos" : "/"}
               className="px-6 py-3 border border-gray-300 rounded-lg text-center font-medium hover:bg-gray-50"
             >
               Cancelar
@@ -529,7 +621,10 @@ export default function PublishProductPage() {
               className="px-6 py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center"
             >
               <Upload className="h-5 w-5 mr-2" />
-              {submitting ? "Publicando..." : "Publicar Artículo"}
+              {submitting 
+                ? (isEditMode ? "Actualizando..." : "Publicando...") 
+                : (isEditMode ? "Actualizar Artículo" : "Publicar Artículo")
+              }
             </button>
           </div>
         </form>

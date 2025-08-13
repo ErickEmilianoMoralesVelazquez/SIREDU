@@ -171,13 +171,11 @@ export default function ProductsPage() {
           {items.length === 0 ? (
             <div className="text-gray-600">No hay artículos.</div>
           ) : (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {items.map((product) => (
-                <li key={product.id} className="bg-white rounded-xl shadow-sm border">
-                  <ProductCard product={product} />
-                </li>
+                <ProductCard key={product.id} product={product} />
               ))}
-            </ul>
+            </div>
           )}
 
           {/* Paginación */}

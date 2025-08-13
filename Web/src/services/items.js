@@ -39,6 +39,7 @@ const adaptItem = (raw = {}) => {
     isFavorite: !!raw.isFavorite,
     favoriteCount: Number(raw.favoriteCount || 0),
     status: raw.status ?? "available",
+    phoneNumber: raw.phoneNumber,
     // extras que tu backend agrega en getItemById:
     condition: raw.condition,
     faculty: raw.faculty,
@@ -49,7 +50,6 @@ const adaptItem = (raw = {}) => {
             id_user: raw.User.id_user,
             username: raw.User.username,
             email: raw.User.email,
-            phoneNumber: raw.User.phoneNumber,
           }
         : undefined),
   };
@@ -213,5 +213,63 @@ export async function createItem(payload) {
   const resp = await apiService.postForm("/items", fd);
   const p = resp && resp.data !== undefined ? resp.data : resp;
   return adaptItem((p && p.item) || p);
+}
+
+// ===== FUNCIONES PARA MIS ARTÍCULOS =====
+
+// GET /items/my-items - Obtener artículos del usuario autenticado
+export async function getMyItems(params = {}) {
+  const payload = await apiService.get("/items/my-items", { params });
+  return adaptListResponse(payload);
+}
+
+// PUT /items/:id - Actualizar artículo
+export async function updateItem(id, payload) {
+  const fd = new FormData();
+
+  // Texto
+  const title = (payload.title || "").trim();
+  const description = (payload.description || "").trim();
+  const category = payload.category || "";
+
+  // Normaliza el tipo a minúsculas para la lógica del precio
+  const typeRaw = (payload.type || "").toLowerCase();
+  const TYPE_MAP = { venta: "Venta", regalo: "Regalo", prestamo: "Préstamo" };
+  const exchangeType = TYPE_MAP[typeRaw] || payload.type || "";
+
+  // Precio correcto: solo si es venta
+  const priceNum = typeRaw === "venta" ? Number(payload.price || 0) : 0;
+
+  // Enviar ambos nombres por compatibilidad con el back
+  fd.append("tittle", title);
+  fd.append("title", title);
+  fd.append("description", description);
+  fd.append("price", String(priceNum));
+  fd.append("category", category);
+  fd.append("exchange_type", exchangeType);
+  fd.append("type", exchangeType);
+  fd.append("phoneNumber", payload.phoneNumber);
+
+  // Archivos: picture1..3 (solo si se proporcionan nuevos)
+  const files = Array.isArray(payload.images) ? payload.images : [];
+  if (files[0]) fd.append("picture1", files[0]);
+  if (files[1]) fd.append("picture2", files[1]);
+  if (files[2]) fd.append("picture3", files[2]);
+
+  const resp = await apiService.putForm(`/items/${id}`, fd);
+  const p = resp && resp.data !== undefined ? resp.data : resp;
+  return adaptItem((p && p.item) || p);
+}
+
+// DELETE /items/:id - Eliminar artículo
+export async function deleteItem(id) {
+  const payload = await apiService.delete(`/items/${id}`);
+  return payload;
+}
+
+// PUT /items/:id/status - Cambiar estado del artículo
+export async function updateItemStatus(id, status) {
+  const payload = await apiService.put(`/items/${id}/status`, { status });
+  return payload;
 }
 

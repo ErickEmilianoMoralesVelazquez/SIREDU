@@ -26,6 +26,7 @@ const User = sequelize.define(
         isEmail: true,
       },
     },
+
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

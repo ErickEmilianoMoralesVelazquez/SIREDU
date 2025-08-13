@@ -73,6 +73,7 @@ export const createItem = async (req, res) => {
       exchange_type,
       type,
       status,
+      phoneNumber,
     } = req.body;
 
     const finalTitle = (tittle || title || "").trim();
@@ -109,6 +110,7 @@ export const createItem = async (req, res) => {
       exchange_type: finalType,
       status: status || "available",
       user_id,
+      phoneNumber: phoneNumber?.trim() || null,
       picture1,
       picture2,
       picture3,
@@ -134,6 +136,110 @@ export const createItem = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error al crear el artículo",
+      error: error.message,
+    });
+  }
+};
+
+// ===== ACTUALIZAR ARTÍCULO =====
+export const updateItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id_user ?? req.user?.id ?? null;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "No autenticado" });
+    }
+
+    // Buscar el artículo y validar propiedad
+    const item = await Item.findOne({ where: { id_item: id, user_id: userId } });
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Artículo no encontrado o no tienes permisos para modificarlo",
+      });
+    }
+
+    // Extraer campos permitidos
+    const {
+      tittle,
+      title,
+      description,
+      price,
+      category,
+      exchange_type,
+      type,
+      phoneNumber,
+    } = req.body || {};
+
+    const updates = {};
+
+    if (typeof tittle === "string" || typeof title === "string") {
+      const finalTitle = (tittle || title || "").trim();
+      if (!finalTitle) {
+        return res.status(400).json({ success: false, message: "El título es obligatorio" });
+      }
+      updates.tittle = finalTitle;
+    }
+
+    if (typeof description === "string") updates.description = description;
+
+    if (price !== undefined) {
+      const priceNum = Number(price || 0);
+      if (Number.isNaN(priceNum)) {
+        return res.status(400).json({ success: false, message: "El precio debe ser numérico" });
+      }
+      updates.price = priceNum;
+    }
+
+    if (typeof category === "string" && category.trim().length > 0) {
+      updates.category = category;
+    }
+
+    // Normalizar tipo de intercambio
+    if (exchange_type !== undefined || type !== undefined) {
+      const TYPE_MAP = { venta: "Venta", regalo: "Regalo", prestamo: "Préstamo", "préstamo": "Préstamo" };
+      const rawType = String(exchange_type || type || "").trim();
+      const finalType = TYPE_MAP[rawType.toLowerCase()] || rawType;
+      updates.exchange_type = finalType;
+    }
+
+    // Actualizar phoneNumber del artículo si llega en la edición
+    if (phoneNumber !== undefined) {
+      updates.phoneNumber = phoneNumber?.trim() || null;
+    }
+
+    // Archivos opcionales (reemplazan solo si vienen nuevos)
+    const picture1 = req.files?.picture1?.[0]?.filename || null;
+    const picture2 = req.files?.picture2?.[0]?.filename || null;
+    const picture3 = req.files?.picture3?.[0]?.filename || null;
+
+    if (picture1) updates.picture1 = picture1;
+    if (picture2) updates.picture2 = picture2;
+    if (picture3) updates.picture3 = picture3;
+
+    await item.update(updates);
+
+    // Volver a leer con include de User
+    const itemWithUser = await Item.findByPk(item.id_item, {
+      include: [
+        {
+          model: User,
+          attributes: ["id_user", "username", "email"],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Artículo actualizado exitosamente",
+      data: itemWithUser,
+    });
+  } catch (error) {
+    console.error("Error updating item:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al actualizar el artículo",
       error: error.message,
     });
   }
@@ -213,6 +319,95 @@ export const advancedSearch = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error en la búsqueda avanzada",
+      error: error.message,
+    });
+  }
+};
+
+// ===== ACTUALIZAR ESTADO DEL ARTÍCULO =====
+export const updateItemStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user?.id_user || null;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "No autenticado",
+      });
+    }
+
+    const result = await ItemsService.updateItemStatus(id, userId, status);
+
+    res.status(200).json({
+      success: true,
+      message: "Estado del artículo actualizado exitosamente",
+      data: result.item
+    });
+  } catch (error) {
+    console.error("Error updating item status:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error al actualizar el estado del artículo",
+      error: error.message,
+    });
+  }
+};
+
+// ===== ELIMINAR ARTÍCULO =====
+export const deleteItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id_user || null;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "No autenticado",
+      });
+    }
+
+    await ItemsService.deleteItem(id, userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Artículo eliminado exitosamente"
+    });
+  } catch (error) {
+    console.error("Error deleting item:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error al eliminar el artículo",
+      error: error.message,
+    });
+  }
+};
+
+// ===== OBTENER ARTÍCULOS DEL USUARIO AUTENTICADO =====
+export const getMyItems = async (req, res) => {
+  try {
+    const userId = req.user?.id_user || null;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "No autenticado",
+      });
+    }
+
+    const result = await ItemsService.getMyItems(userId, req.query);
+
+    res.status(200).json({
+      success: true,
+      data: result.items,
+      pagination: result.pagination
+    });
+  } catch (error) {
+    console.error("Error getting my items:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener tus artículos",
       error: error.message,
     });
   }

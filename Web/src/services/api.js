@@ -109,6 +109,11 @@ class ApiService {
     return this.request(endpoint, { method: "POST", body: formData, ...options });
   }
 
+  // Actualización de archivos con FormData
+  async putForm(endpoint, formData, options = {}) {
+    return this.request(endpoint, { method: "PUT", body: formData, ...options });
+  }
+
   async put(endpoint, data = {}, options = {}) {
     return this.request(endpoint, { method: "PUT", body: data, ...options });
   }
