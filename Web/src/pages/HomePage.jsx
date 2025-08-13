@@ -1,61 +1,19 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Shirt, Laptop, Gift } from "lucide-react";
 import ProductCard from "../components/products/ProductCard";
+import { useFeaturedItems } from "../hooks/useFeaturedItems";
+import { useStats } from "../hooks/useStats";
+import ItemsLoader from "../components/ui/ItemsLoader";
+import ApiStatus from "../components/ui/ApiStatus";
 
 export default function HomePage() {
-  // Datos de ejemplo para productos destacados
-  const featuredProducts = [
-    {
-      id: 1,
-      title: "Libro de Cálculo Avanzado",
-      category: "Libros",
-      type: "Venta",
-      price: 250,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Carlos Méndez",
-      createdAt: "2023-05-15",
-    },
-    {
-      id: 2,
-      title: "Laptop Dell Inspiron",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 4500,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Ana Gutiérrez",
-      createdAt: "2023-05-14",
-    },
-    {
-      id: 3,
-      title: "Sudadera Universitaria",
-      category: "Ropa",
-      type: "Regalo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Miguel Torres",
-      createdAt: "2023-05-13",
-    },
-    {
-      id: 4,
-      title: "Calculadora Científica",
-      category: "Útiles",
-      type: "Préstamo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Laura Sánchez",
-      createdAt: "2023-05-12",
-    },
-  ];
-
-  // Datos de ejemplo para estadísticas
-  const stats = [
-    { label: "Artículos Intercambiados", value: "1,234+" },
-    { label: "Usuarios Activos", value: "500+" },
-    { label: "Kg de Residuos Evitados", value: "750+" },
-  ];
+  // Usar hooks para obtener datos del backend
+  const { items: featuredProducts, loading: itemsLoading, error: itemsError } = useFeaturedItems(4);
+  const { stats, loading: statsLoading, error: statsError } = useStats();
 
   return (
     <div>
+      <ApiStatus />
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-emerald-700 to-emerald-900 text-white py-16">
         <div className="container mx-auto px-4">
@@ -167,11 +125,30 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {itemsLoading ? (
+            <ItemsLoader count={4} />
+          ) : itemsError ? (
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-4">{itemsError}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600 mb-4">No hay artículos disponibles en este momento.</p>
+              <p className="text-sm text-gray-500">¡Sé el primero en publicar un artículo!</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -225,14 +202,35 @@ export default function HomePage() {
             Nuestro Impacto
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <p className="text-4xl font-bold mb-2">{stat.value}</p>
-                <p className="text-xl text-emerald-200">{stat.label}</p>
-              </div>
-            ))}
-          </div>
+          {statsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="text-center animate-pulse">
+                  <div className="h-12 bg-emerald-200 rounded mb-2 mx-auto w-24"></div>
+                  <div className="h-6 bg-emerald-200 rounded mx-auto w-32"></div>
+                </div>
+              ))}
+            </div>
+          ) : statsError ? (
+            <div className="text-center py-8">
+              <p className="text-emerald-200 mb-4">Error al cargar estadísticas</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-white text-emerald-700 px-4 py-2 rounded-lg hover:bg-emerald-100 transition-colors"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <p className="text-4xl font-bold mb-2">{stat.value}</p>
+                  <p className="text-xl text-emerald-200">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

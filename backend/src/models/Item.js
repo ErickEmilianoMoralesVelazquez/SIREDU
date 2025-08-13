@@ -37,7 +37,7 @@ const Item = sequelize.define(
     status: {
       type: DataTypes.ENUM("available", "sold", "reserved", "pending", "approved", "rejected", "flagged"),
       allowNull: false,
-      defaultValue: "pending",
+      defaultValue: "available",
     },
     category: {
       type: DataTypes.STRING(50),
@@ -46,6 +46,10 @@ const Item = sequelize.define(
     exchange_type: {
       type: DataTypes.ENUM("Venta", "Préstamo", "Regalo"),
       allowNull: false,
+    },
+    phoneNumber: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

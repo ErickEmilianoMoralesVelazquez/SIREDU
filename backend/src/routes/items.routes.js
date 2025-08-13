@@ -7,10 +7,14 @@ import {
   getAllItems,
   getItemById,
   createItem,
+  updateItem,
   getCategories,
   getTypes,
   getFilterStats,
   advancedSearch,
+  getMyItems,
+  updateItemStatus,
+  deleteItem,
 } from "../controllers/items.controller.js";
 import { authenticateToken } from "../middlewares/auth.middleware.js";
 import { validateCreateItem } from "../middlewares/validation.middleware.js";
@@ -48,12 +52,33 @@ const upload = multer({
 });
 
 // ===== Rutas =====
-// (Asumiendo que en app.js montas: app.use("/items", itemsRouter))
+// IMPORTANTE: Las rutas específicas deben ir ANTES de las rutas con parámetros
 router.get("/", getAllItems);
+router.get("/my-items", authenticateToken, (req, res, next) => {
+  console.log("🔍 Ruta /my-items interceptada correctamente");
+  next();
+}, getMyItems); // Mis artículos
 router.get("/search", advancedSearch);
 router.get("/categories", getCategories);
 router.get("/types", getTypes);
 router.get("/filter-stats", getFilterStats);
+
+// Rutas para gestión de artículos del usuario
+// IMPORTANTE: rutas más específicas antes de "/:id"
+router.put("/:id/status", authenticateToken, updateItemStatus);
+router.put(
+  "/:id",
+  authenticateToken,
+  upload.fields([
+    { name: "picture1", maxCount: 1 },
+    { name: "picture2", maxCount: 1 },
+    { name: "picture3", maxCount: 1 },
+  ]),
+  updateItem
+);
+router.delete("/:id", authenticateToken, deleteItem);
+
+// Esta ruta debe ir AL FINAL para no interceptar las rutas específicas
 router.get("/:id", getItemById);
 
 router.post(

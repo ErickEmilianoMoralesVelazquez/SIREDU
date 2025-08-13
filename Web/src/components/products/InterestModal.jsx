@@ -4,6 +4,9 @@ import { X, Phone } from "lucide-react";
 
 export default function InterestModal({ isOpen, onClose, phoneNumber }) {
   if (!isOpen) return null;
+  
+  // Debug info
+  console.log('InterestModal props:', { isOpen, phoneNumber, type: typeof phoneNumber });
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -19,18 +22,35 @@ export default function InterestModal({ isOpen, onClose, phoneNumber }) {
         </div>
 
         <div className="p-6 text-center">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Phone className="h-8 w-8 text-emerald-600" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            phoneNumber ? "bg-emerald-100" : "bg-gray-100"
+          }`}>
+            <Phone className={`h-8 w-8 ${
+              phoneNumber ? "text-emerald-600" : "text-gray-400"
+            }`} />
           </div>
           <h3 className="text-xl font-semibold mb-2">
-            Número de Teléfono
+            {phoneNumber ? "Número de Teléfono" : "Sin Información de Contacto"}
           </h3>
-          <p className="text-gray-800 text-2xl font-bold tracking-wider mb-4">
-            {phoneNumber ? phoneNumber : "No disponible"}
-          </p>
-          <p className="text-gray-600">
-            Contacta al vendedor directamente a este número.
-          </p>
+          {phoneNumber ? (
+            <>
+              <p className="text-gray-800 text-2xl font-bold tracking-wider mb-4">
+                {phoneNumber}
+              </p>
+              <p className="text-gray-600">
+                Contacta al vendedor directamente a este número.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-500 text-lg mb-4">
+                Este artículo no tiene número de teléfono registrado.
+              </p>
+              <p className="text-gray-600">
+                Contacta al vendedor a través de la plataforma.
+              </p>
+            </>
+          )}
         </div>
         
         <div className="flex justify-end gap-3 p-4 bg-gray-50 rounded-b-xl">
