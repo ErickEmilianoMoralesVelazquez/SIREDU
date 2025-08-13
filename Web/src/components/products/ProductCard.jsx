@@ -47,6 +47,26 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
     }
   };
 
+  const statusBadge = (status) => {
+    switch (status) {
+      case "available":
+        return "bg-green-100 text-green-800 ring-green-200";
+      // Para mantener compatibilidad con estados existentes
+      case "reserved":
+      case "sold":
+        return "bg-red-100 text-red-800 ring-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 ring-gray-200";
+    }
+  };
+
+  const statusLabel = (status, type) => {
+    if (status === "available") return "Disponible";
+    // Para mantener compatibilidad con estados existentes
+    if (status === "reserved" || status === "sold") return "No disponible";
+    return "Desconocido";
+  };
+
   return (
     <article className="group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-[transform,box-shadow] hover:-translate-y-[2px] hover:shadow-md">
       {/* Imagen */}
@@ -67,6 +87,17 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
               )}`}
             >
               {type}
+            </span>
+          )}
+          
+          {/* Badge de estado */}
+          {product.status && (
+            <span
+              className={`absolute left-3 bottom-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusBadge(
+                product.status
+              )}`}
+            >
+              {statusLabel(product.status, type)}
             </span>
           )}
           {/* Botón favorito */}

@@ -129,7 +129,8 @@ class ItemsService {
         user: {
           id_user: item.User?.id_user,
           username: item.User?.username,
-          email: item.User?.email
+          email: item.User?.email,
+          phoneNumber: item.User?.phoneNumber,
         }
       }));
 
@@ -186,12 +187,13 @@ class ItemsService {
         isFavorite: itemWithFavorites.isFavorite || false,
         favoriteCount: itemWithFavorites.favoriteCount || 0,
         status: itemWithFavorites.status,
+        phoneNumber: itemWithFavorites.phoneNumber,
         condition: "Usado - Buen estado", // Campo adicional para el frontend
         faculty: "Ingeniería", // Campo adicional para el frontend
         user: {
           id_user: itemWithFavorites.User?.id_user,
           username: itemWithFavorites.User?.username,
-          email: itemWithFavorites.User?.email
+          email: itemWithFavorites.User?.email,
         }
       };
 
@@ -317,6 +319,152 @@ class ItemsService {
     }
   }
 
+  // ===== ACTUALIZAR ESTADO DEL ARTÍCULO =====
+  
+  static async updateItemStatus(itemId, userId, newStatus) {
+    try {
+      // Verificar que el artículo pertenece al usuario
+      const item = await Item.findOne({
+        where: {
+          id_item: itemId,
+          user_id: userId
+        }
+      });
+
+      if (!item) {
+        throw new Error("Artículo no encontrado o no tienes permisos para modificarlo");
+      }
+
+      // Actualizar el estado
+      await item.update({ status: newStatus });
+
+      return { success: true, item };
+    } catch (error) {
+      console.error('Error updating item status:', error);
+      throw error;
+    }
+  }
+
+  // ===== ELIMINAR ARTÍCULO =====
+  
+  static async deleteItem(itemId, userId) {
+    try {
+      // Verificar que el artículo pertenece al usuario
+      const item = await Item.findOne({
+        where: {
+          id_item: itemId,
+          user_id: userId
+        }
+      });
+
+      if (!item) {
+        throw new Error("Artículo no encontrado o no tienes permisos para eliminarlo");
+      }
+
+      // Eliminar el artículo
+      await item.destroy();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      throw error;
+    }
+  }
+
+  // ===== OBTENER ARTÍCULOS DEL USUARIO AUTENTICADO =====
+  
+  static async getMyItems(userId, params = {}) {
+    try {
+      const { 
+        page = 1, 
+        limit = 10, 
+        status,
+        sortBy = "created_at"
+      } = params;
+      
+      const offset = (page - 1) * limit;
+
+      // Construir where clause para artículos del usuario
+      const whereClause = {
+        user_id: userId
+      };
+      
+      // Filtrar por estado si se especifica
+      if (status) {
+        whereClause.status = status;
+      }
+
+      // Determinar ordenamiento
+      let orderClause = [["created_at", "DESC"]];
+      switch (sortBy) {
+        case "oldest":
+          orderClause = [["created_at", "ASC"]];
+          break;
+        case "recent":
+        default:
+          orderClause = [["created_at", "DESC"]];
+          break;
+      }
+
+      const items = await Item.findAndCountAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            attributes: ["id_user", "username", "email"],
+          },
+        ],
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: orderClause,
+      });
+
+      // Agregar información de favoritos
+      const itemsWithFavorites = await FavoritesService.addFavoriteInfoToItems(items.rows, userId);
+
+      // Transformar datos para el frontend
+      const transformedItems = itemsWithFavorites.map(item => ({
+        id: item.id_item,
+        title: item.tittle,
+        description: item.description,
+        price: parseFloat(item.price) || 0,
+        category: item.category,
+        type: item.exchange_type,
+        image: item.picture1 || "/placeholder.svg?height=300&width=300",
+        images: [
+          item.picture1,
+          item.picture2,
+          item.picture3
+        ].filter(Boolean),
+        owner: item.User?.username || "Usuario desconocido",
+        createdAt: item.created_at,
+        isFavorite: item.isFavorite || false,
+        favoriteCount: item.favoriteCount || 0,
+        status: item.status,
+        phoneNumber: item.phoneNumber, // Agregar el campo phoneNumber del artículo
+        user: {
+          id_user: item.User?.id_user,
+          username: item.User?.username,
+          email: item.User?.email,
+          phoneNumber: item.User?.phoneNumber,
+        }
+      }));
+
+      return {
+        items: transformedItems,
+        pagination: {
+          total: items.count,
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(items.count / limit),
+          limit: parseInt(limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error getting my items:', error);
+      throw error;
+    }
+  }
+
   // ===== BÚSQUEDA AVANZADA =====
   
   static async advancedSearch(params = {}, userId = null) {
@@ -434,7 +582,8 @@ class ItemsService {
         user: {
           id_user: item.User?.id_user,
           username: item.User?.username,
-          email: item.User?.email
+          email: item.User?.email,
+          phoneNumber: item.User?.phoneNumber,
         }
       }));
 
