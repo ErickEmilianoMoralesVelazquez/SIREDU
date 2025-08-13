@@ -40,6 +40,19 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: "active",
     },
+    reset_password_token: { 
+      type: DataTypes.STRING(64), 
+      allowNull: true 
+    },
+    reset_password_expires: { 
+      type: DataTypes.DATE, 
+      allowNull: true 
+    },
+    password_changed_at: { 
+      type: DataTypes.DATE, 
+      allowNull: true 
+    },
+
   },
   {
     tableName: "users",
