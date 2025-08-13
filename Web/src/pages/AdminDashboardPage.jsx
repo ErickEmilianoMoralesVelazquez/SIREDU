@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart,
   PieChart,
@@ -17,6 +20,8 @@ import {
 import { adminService } from "../services/adminService.js";
 
 export default function AdminDashboardPage() {
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,11 +29,19 @@ export default function AdminDashboardPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
-  // Cargar datos del dashboard
+  // Redirigir si no es admin y cargar datos
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!isLoading) {
+      if (!isAuthenticated || !user || user.role !== "admin") {
+        navigate("/", { replace: true });
+      } else {
+        loadDashboardData();
+      }
+    }
+    // eslint-disable-next-line
+  }, [isAuthenticated, user, isLoading]);
 
   const loadDashboardData = async () => {
     try {
@@ -135,12 +148,47 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Topbar admin */}
+      <div className="w-full bg-emerald-700 text-white flex justify-end items-center px-6 py-2 shadow-sm">
+        <div className="relative group">
+          <button className="flex items-center space-x-2 focus:outline-none">
+            <span className="font-medium">{user?.name || user?.username || "Admin"}</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div className="absolute right-0 mt-2 w-40 bg-white text-gray-800 rounded shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity z-50">
+            <button
+              onClick={() => setShowConfirmLogout(true)}
+              className="block w-full text-left px-4 py-2 hover:bg-emerald-100"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+      <ConfirmDialog
+        open={showConfirmLogout}
+        title="¿Cerrar sesión?"
+        message="¿Estás seguro de que deseas cerrar sesión?"
+        onCancel={() => setShowConfirmLogout(false)}
+        onConfirm={() => {
+          setShowConfirmLogout(false);
+          logout();
+          navigate("/");
+        }}
+      />
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Panel de Administración</h1>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-4 text-red-500 hover:text-red-700 focus:outline-none"
+              aria-label="Cerrar alerta"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
         )}
         
