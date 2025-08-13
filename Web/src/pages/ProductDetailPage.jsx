@@ -421,7 +421,7 @@ export default function ProductDetailPage() {
       <InterestModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        productTitle={item.title}
+        phoneNumber={item.user?.phoneNumber}
       />
     </div>
   );

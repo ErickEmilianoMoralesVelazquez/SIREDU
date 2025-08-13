@@ -26,7 +26,6 @@ export default function LoginPage() {
     password: "",
     name: "",
     confirmPassword: "",
-    acceptTerms: false,
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -50,9 +49,7 @@ export default function LoginPage() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const sanitizedValue =
-      type === "checkbox"
-        ? checked
-        : name === "name"
+      name === "name"
         ? value // permitir espacios para el nombre
         : sanitizeInput(value); // sanitizar el resto
 
@@ -95,7 +92,7 @@ export default function LoginPage() {
     if (mode === "recovery") {
       showSuccess("Se ha enviado un enlace de recuperación a tu correo electrónico");
       setMode("login");
-      setFormData({ email: "", password: "", name: "", confirmPassword: "", acceptTerms: false });
+  setFormData({ email: "", password: "", name: "", confirmPassword: "" });
       setErrors({});
       setTouched({});
       return;
@@ -104,8 +101,8 @@ export default function LoginPage() {
     // Validación del formulario completo
     const validation =
       mode === "login"
-        ? validateLoginForm(formData)         // usa context: 'login' internamente
-        : validateRegisterForm(formData);     // usa context: 'register' internamente
+        ? validateLoginForm(formData)
+        : validateRegisterForm(formData);
 
     if (!validation.isValid) {
       setErrors(validation.errors);
@@ -138,14 +135,6 @@ export default function LoginPage() {
           showError(result.error || "Error al iniciar sesión");
         }
       } else {
-        // Check terms acceptance
-        if (!formData.acceptTerms) {
-          setErrors({
-            acceptTerms: "Debes aceptar los términos y condiciones",
-          });
-          return;
-        }
-
         const result = await register({
           username: formData.name.split(" ")[0], // primer nombre como username
           name: formData.name,
@@ -163,7 +152,6 @@ export default function LoginPage() {
               password: "",
               name: "",
               confirmPassword: "",
-              acceptTerms: false,
             });
             setErrors({});
             setTouched({});
@@ -186,7 +174,6 @@ export default function LoginPage() {
       password: "",
       name: "",
       confirmPassword: "",
-      acceptTerms: false,
     });
   };
 
@@ -404,33 +391,7 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Terms (solo en registro) */}
-              {mode === "register" && (
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="acceptTerms"
-                    name="acceptTerms"
-                    checked={formData.acceptTerms}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 mr-2"
-                  />
-                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                    Acepto los{" "}
-                    <Link to="/terminos" className="text-emerald-600 hover:underline">
-                      términos y condiciones
-                    </Link>{" "}
-                    y la{" "}
-                    <Link to="/privacidad" className="text-emerald-600 hover:underline">
-                      política de privacidad
-                    </Link>
-                  </label>
-                  {errors.acceptTerms && (
-                    <p className="mt-1 text-sm text-red-600">{errors.acceptTerms}</p>
-                  )}
-                </div>
-              )}
+              {/* ...eliminado el checkbox de términos y condiciones... */}
 
               {/* Forgot Password (solo en login) */}
               {mode === "login" && (

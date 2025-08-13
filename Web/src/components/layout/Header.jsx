@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { listItems } from "../../services/items";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Search, Menu, X, User, LogIn } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -51,102 +52,30 @@ export default function Header() {
     }
   }, [location, navigate]);
 
-  // Datos de ejemplo para productos (mismos que en HomePage)
-  const allProducts = [
-    {
-      id: 1,
-      title: "Libro de Cálculo Avanzado",
-      category: "Libros",
-      type: "Venta",
-      price: 250,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Carlos Méndez",
-    },
-    {
-      id: 2,
-      title: "Laptop Dell Inspiron",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 4500,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Ana Gutiérrez",
-    },
-    {
-      id: 3,
-      title: "Sudadera Universitaria",
-      category: "Ropa",
-      type: "Regalo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Miguel Torres",
-    },
-    {
-      id: 4,
-      title: "Calculadora Científica",
-      category: "Útiles",
-      type: "Préstamo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Laura Sánchez",
-    },
-    {
-      id: 5,
-      title: "Diccionario de Inglés",
-      category: "Libros",
-      type: "Venta",
-      price: 150,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Roberto Díaz",
-    },
-    {
-      id: 6,
-      title: "Mochila Escolar",
-      category: "Útiles",
-      type: "Venta",
-      price: 200,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Carmen López",
-    },
-    {
-      id: 7,
-      title: "Tablet Samsung",
-      category: "Electrónicos",
-      type: "Venta",
-      price: 2800,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Diego Ramírez",
-    },
-    {
-      id: 8,
-      title: "Jeans Universitarios",
-      category: "Ropa",
-      type: "Regalo",
-      price: 0,
-      image: "/placeholder.svg?height=300&width=300",
-      owner: "Sofia Martínez",
-    },
-  ];
+  // Eliminar productos de ejemplo. Ahora se buscará en la base de datos.
 
-  // Filtrar productos según el término de búsqueda
+  // Buscar productos en la base de datos según el término de búsqueda
   useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredProducts([]);
-      setShowSearchResults(false);
-      return;
-    }
-
-    const filtered = allProducts.filter((product) => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        product.title.toLowerCase().includes(searchLower) ||
-        product.category.toLowerCase().includes(searchLower) ||
-        product.type.toLowerCase().includes(searchLower) ||
-        product.owner.toLowerCase().includes(searchLower)
-      );
-    });
-
-    setFilteredProducts(filtered);
-    setShowSearchResults(true);
+    let ignore = false;
+    const fetchProducts = async () => {
+      if (searchTerm.trim() === "") {
+        setFilteredProducts([]);
+        setShowSearchResults(false);
+        return;
+      }
+      try {
+        const { list } = await listItems({ search: searchTerm, limit: 10 });
+        if (!ignore) {
+          setFilteredProducts(list);
+          setShowSearchResults(true);
+        }
+      } catch (err) {
+        setFilteredProducts([]);
+        setShowSearchResults(true);
+      }
+    };
+    fetchProducts();
+    return () => { ignore = true; };
   }, [searchTerm]);
 
   // Limpiar búsqueda
