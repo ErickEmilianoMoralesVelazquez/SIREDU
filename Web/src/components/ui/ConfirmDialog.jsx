@@ -18,7 +18,7 @@ const ConfirmDialog = ({ open, title, message, onConfirm, onCancel }) => {
             className="px-3 py-1 rounded bg-red-500 hover:bg-red-600 text-white"
             onClick={onConfirm}
           >
-            Sí, cerrar sesión
+            Sí, confirmar
           </button>
         </div>
       </div>
