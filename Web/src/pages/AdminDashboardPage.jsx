@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ConfirmDialog from "../components/ui/ConfirmDialog.jsx";
+import { useToast } from "../context/ToastContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import {
@@ -30,6 +31,29 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const { showSuccess, showError } = useToast();
+  // Función para ver producto (abrir en nueva ventana)
+  const handleViewProduct = (product) => {
+    const url = `/producto/${product.id}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Función para eliminar producto
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return;
+    try {
+      await adminService.deleteItem(productToDelete.id);
+      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      showSuccess("Producto eliminado correctamente");
+    } catch (err) {
+      showError("Error al eliminar el producto");
+    } finally {
+      setShowConfirmDelete(false);
+      setProductToDelete(null);
+    }
+  };
 
   // Redirigir si no es admin y cargar datos
   useEffect(() => {
@@ -453,12 +477,12 @@ export default function AdminDashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            product.status === "active"
+                            ["available", "approved"].includes(product.status)
                               ? "bg-green-100 text-green-800"
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {product.status === "active" ? "Activo" : "Inactivo"}
+                          {["available", "approved"].includes(product.status) ? "Activo" : "Inactivo"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -466,10 +490,21 @@ export default function AdminDashboardPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
-                          <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
-                            <Eye className="h-4 w-4 text-gray-500" />
+                          <button
+                            className="p-1 rounded-full hover:bg-emerald-100 transition-colors"
+                            title="Ver producto"
+                            onClick={() => handleViewProduct(product)}
+                          >
+                            <Eye className="h-4 w-4 text-emerald-600" />
                           </button>
-                          <button className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                          <button
+                            className="p-1 rounded-full hover:bg-red-100 transition-colors"
+                            title="Eliminar producto"
+                            onClick={() => {
+                              setProductToDelete(product);
+                              setShowConfirmDelete(true);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </button>
                         </div>
@@ -481,6 +516,17 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Pagination */}
+            {/* Confirmación de eliminación de producto */}
+            <ConfirmDialog
+              open={showConfirmDelete}
+              title="¿Eliminar producto?"
+              message={`¿Estás seguro de que deseas eliminar el producto "${productToDelete?.title}"? Esta acción no se puede deshacer.`}
+              onCancel={() => {
+                setShowConfirmDelete(false);
+                setProductToDelete(null);
+              }}
+              onConfirm={handleDeleteProduct}
+            />
             {totalPages > 1 && (
               <div className="flex justify-between items-center mt-6">
                 <p className="text-sm text-gray-500">
