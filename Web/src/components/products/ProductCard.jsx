@@ -16,6 +16,7 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
     isFavorite = false,
     favoriteCount = 0,
     interestedCount = 0,
+    status,
   } = product || {};
 
   const cover = useMemo(() => {
@@ -47,11 +48,10 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
     }
   };
 
-  const statusBadge = (status) => {
-    switch (status) {
+  const statusBadge = (st) => {
+    switch (st) {
       case "available":
         return "bg-green-100 text-green-800 ring-green-200";
-      // Para mantener compatibilidad con estados existentes
       case "reserved":
       case "sold":
         return "bg-red-100 text-red-800 ring-red-200";
@@ -60,18 +60,18 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
     }
   };
 
-  const statusLabel = (status, type) => {
-    if (status === "available") return "Disponible";
-    // Para mantener compatibilidad con estados existentes
-    if (status === "reserved" || status === "sold") return "No disponible";
+  const statusLabel = (st, t) => {
+    if (st === "available") return "Disponible";
+    if (st === "reserved" || st === "sold") return "No disponible";
     return "Desconocido";
   };
 
   return (
     <article className="group relative overflow-hidden rounded-xl border bg-white shadow-sm transition-[transform,box-shadow] hover:-translate-y-[2px] hover:shadow-md">
-      {/* Imagen */}
-      <Link to={`/articulos/${id}`} className="block">
-        <div className="relative aspect-[4/3] bg-gray-50">
+      {/* Contenedor visual (RELATIVE para posicionar elementos) */}
+      <div className="relative aspect-[4/3] bg-gray-50">
+        {/* Imagen clickeable (SOLO la imagen está dentro del Link) */}
+        <Link to={`/articulos/${id}`} className="block h-full w-full">
           <img
             src={cover}
             alt={title || "Artículo"}
@@ -79,51 +79,61 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
             loading="lazy"
             onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
           />
-          {/* Badge de tipo */}
-          {type && (
-            <span
-              className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${typeBadge(
-                type
-              )}`}
-            >
-              {type}
-            </span>
-          )}
-          
-          {/* Badge de estado */}
-          {product.status && (
-            <span
-              className={`absolute left-3 bottom-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusBadge(
-                product.status
-              )}`}
-            >
-              {statusLabel(product.status, type)}
-            </span>
-          )}
-          {/* Botón favorito */}
-          <button
-            type="button"
-            onClick={(e) => {
+        </Link>
+
+        {/* Badges fuera del Link para evitar overlays indeseados */}
+        {type && (
+          <span
+            className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${typeBadge(
+              type
+            )}`}
+          >
+            {type}
+          </span>
+        )}
+
+        {status && (
+          <span
+            className={`absolute left-3 bottom-3 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${statusBadge(
+              status
+            )}`}
+          >
+            {statusLabel(status, type)}
+          </span>
+        )}
+
+        {/* Botón de FAVORITOS (NO está dentro del Link) */}
+        <button
+          type="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleFavorite?.(product);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               e.stopPropagation();
               onToggleFavorite?.(product);
-            }}
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 backdrop-blur text-gray-700 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-white"
-            aria-pressed={isFavorite}
-            aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-            title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
-          >
-            <Heart className={`h-5 w-5 ${isFavorite ? "fill-current text-emerald-600" : ""}`} />
-          </button>
+            }
+          }}
+          className={`absolute right-3 top-3 z-30 grid size-9 place-items-center rounded-full bg-white/85 backdrop-blur text-gray-700 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+          aria-pressed={isFavorite}
+          aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+          title={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+        >
+          <Heart className={`h-5 w-5 ${isFavorite ? "fill-current text-emerald-600" : ""}`} />
+        </button>
 
-          {/* Contador de favoritos (opcional) */}
-          {favoriteCount > 0 && (
-            <span className="absolute bottom-3 right-3 rounded-full bg-white/85 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 shadow-sm">
-              {favoriteCount} ♥
-            </span>
-          )}
-        </div>
-      </Link>
+        {/* Contador de favoritos */}
+        {favoriteCount > 0 && (
+          <span className="absolute bottom-3 right-3 z-20 rounded-full bg-white/85 px-2 py-0.5 text-xs font-medium text-gray-700 ring-1 ring-gray-200 shadow-sm">
+            {favoriteCount} ♥
+          </span>
+        )}
+      </div>
+
       {/* Contenido */}
       <div className="p-4">
         {category && (
@@ -138,7 +148,7 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
           </h3>
         </Link>
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between gap-3">
           <div className="text-emerald-700">
             <span className="text-sm font-medium">Precio</span>
             <div className="text-lg font-bold leading-tight">{priceLabel}</div>
@@ -146,7 +156,8 @@ export default function ProductCard({ product, onToggleFavorite, onShowIntereste
 
           {interestedCount > 0 && (
             <button
-              onClick={() => onShowInterested(product)}
+              type="button"
+              onClick={() => onShowInterested?.(product)}
               className="flex items-center gap-1 text-sm text-gray-600 hover:text-emerald-600"
             >
               <Eye className="h-4 w-4" />

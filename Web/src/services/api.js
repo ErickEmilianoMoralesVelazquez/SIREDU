@@ -1,4 +1,5 @@
 // src/services/api.js
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 // Usa la URL del .env si existe; si no, fallback a localhost:3001
 const API_BASE_URL =
@@ -125,6 +126,73 @@ class ApiService {
   async delete(endpoint, options = {}) {
     return this.request(endpoint, { method: "DELETE", ...options });
   }
+}
+
+function getRawToken() {
+  // intenta varias llaves comunes
+  const keys = ["token", "authToken", "accessToken", "jwt"];
+  for (const k of keys) {
+    let v = localStorage.getItem(k);
+    if (!v) continue;
+    // algunos guardan JSON.stringify(token)
+    try { v = JSON.parse(v); } catch {}
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+function normalizeBearer(raw) {
+  if (!raw) return null;
+  const r = String(raw).trim();
+  // si ya viene con "Bearer " lo usamos
+  if (r.toLowerCase().startsWith("bearer ")) return r.slice(7).trim() || null;
+  // si viene en formato jwt (xxx.yyy.zzz) lo aceptamos directo
+  return r;
+}
+
+function authHeaders() {
+  const raw = getRawToken();
+  const token = normalizeBearer(raw);
+  if (!token) return {};
+  return {
+    Authorization: `Bearer ${token}`,
+    "x-access-token": token, // fallback si el backend busca este header
+  };
+}
+
+async function request(path, options = {}) {
+  const url = path.startsWith("http") ? path : BASE_URL + path;
+
+  const res = await fetch(url, {
+    method: options.method || "GET",
+    headers: {
+      "Accept": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders(),
+      ...(options.headers || {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    // si usas JWT por cookie httpOnly en el servidor:
+    credentials: "include",
+  });
+
+  // intenta parsear json, pero tolera vacíos
+  let data = null;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    try { data = await res.json(); } catch { data = null; }
+  }
+
+  if (!res.ok) {
+    const msg = (data && (data.error || data.message)) || res.statusText;
+    // trata 401/403 como token inválido
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("Token inválido");
+    }
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+
+  return data;
 }
 
 export const apiService = new ApiService();

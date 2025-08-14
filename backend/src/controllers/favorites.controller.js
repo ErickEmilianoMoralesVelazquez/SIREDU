@@ -308,3 +308,101 @@ export const getUserFavoriteStats = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }; 
+
+// Store en memoria: userId -> Set<itemId>
+const favStore = new Map();
+
+/** Devuelve el Set de un usuario, creándolo si no existe */
+function bucket(userId) {
+  const key = String(userId);
+  if (!favStore.has(key)) favStore.set(key, new Set());
+  return favStore.get(key);
+}
+
+/** POST /items/:id/favorite */
+export async function add(req, res) {
+  const userId = req.user?.id;
+  const itemId = Number(req.params.id);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!Number.isFinite(itemId)) return res.status(400).json({ error: "Invalid item id" });
+
+  const set = bucket(userId);
+  set.add(itemId);
+  return res.json({ ok: true });
+}
+
+/** DELETE /items/:id/favorite */
+export async function remove(req, res) {
+  const userId = req.user?.id;
+  const itemId = Number(req.params.id);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!Number.isFinite(itemId)) return res.status(400).json({ error: "Invalid item id" });
+
+  const set = bucket(userId);
+  set.delete(itemId);
+  return res.json({ ok: true });
+}
+
+/** GET /items/:id/favorite -> { isFavorite: boolean } */
+export async function status(req, res) {
+  const userId = req.user?.id;
+  const itemId = Number(req.params.id);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+  if (!Number.isFinite(itemId)) return res.status(400).json({ error: "Invalid item id" });
+
+  const set = bucket(userId);
+  return res.json({ isFavorite: set.has(itemId) });
+}
+
+/** GET /favorites -> { favorites: [...] }
+ *  Estructura compatible con tu FavoritesPage (trae f.item.*)
+ */
+export async function list(req, res) {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const set = bucket(userId);
+  const favorites = Array.from(set).map((id) => ({
+    itemId: id,
+    // Devolvemos también un subobjeto "item" para que tu frontend mapee sin romper
+    item: {
+      id_item: id,
+      tittle: `Artículo ${id}`,     // placeholder
+      price: 0,
+      category: "General",
+      exchange_type: "Regalo",
+      picture1: "/placeholder.svg",
+      favoriteCount: 0,
+      created_at: new Date().toISOString(),
+      user: { username: "demo" },
+    },
+  }));
+
+  return res.json({ favorites });
+}
+
+/** GET /favorites/most-favorited?limit=10 */
+export async function mostFavorited(req, res) {
+  const limit = Math.max(1, Math.min(50, Number(req.query.limit || 10)));
+
+  // Construimos conteos agregando todos los usuarios
+  const counts = new Map(); // itemId -> count
+  for (const set of favStore.values()) {
+    for (const id of set) counts.set(id, (counts.get(id) || 0) + 1);
+  }
+
+  const items = Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id, cnt]) => ({
+      itemId: id,
+      count: cnt,
+      item: {
+        id_item: id,
+        tittle: `Artículo ${id}`,
+        picture1: "/placeholder.svg",
+      },
+    }));
+
+  return res.json({ items });
+}

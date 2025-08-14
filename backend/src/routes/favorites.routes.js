@@ -9,6 +9,10 @@ import {
   getMostFavoritedItems,
   getUserFavoriteStats
 } from "../controllers/favorites.controller.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import * as favorites from "../controllers/favorites.controller.js"; // 👈 AQUI importamos
+
+
 
 const router = Router();
 
@@ -37,5 +41,15 @@ router.get("/most-favorited", getMostFavoritedItems);
 
 // Obtener estadísticas de favoritos del usuario
 router.get("/favorites/stats", getUserFavoriteStats);
+
+router.post("/items/:id/favorite", authenticate, favorites.add);
+// Quitar de favoritos
+router.delete("/items/:id/favorite", authenticate, favorites.remove);
+// Saber si es favorito
+router.get("/items/:id/favorite", authenticate, favorites.status);
+// Listar mis favoritos
+router.get("/favorites", authenticate, favorites.list);
+// (opcional) top más marcados
+router.get("/favorites/most-favorited", authenticate, favorites.mostFavorited);
 
 export default router; 

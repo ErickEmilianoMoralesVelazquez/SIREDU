@@ -17,30 +17,51 @@ import {
 import InterestModal from "../components/products/InterestModal";
 import QRCode from "qrcode";
 import { getItemById } from "../services/items";
-import { favoritesService } from "../services/favoritesService";
+import { favoritesService } from "../services/favoritesService.js";
 
 export default function ProductDetailPage() {
-  const { id } = useParams();
+  const { id: routeId } = useParams();
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentImage, setCurrentImage] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
+
+  // Favoritos
   const [isFav, setIsFav] = useState(false);
+
+  // QR
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const urlbase = "http://localhost:3000/producto/";
 
-  // Carga del artículo
+  // Deriva el ID del item de manera robusta
+  const itemId = useMemo(
+    () => Number(routeId ?? item?.id ?? item?.id_item),
+    [routeId, item]
+  );
+
+  // Carga del artículo + estado inicial de favorito
   useEffect(() => {
     let cancel = false;
-    setLoading(true);
     (async () => {
+      setLoading(true);
       try {
-        const data = await getItemById(id);
+        const data = await getItemById(routeId);
         if (!cancel) {
           setItem(data);
-          setIsFav(!!data.isFavorite);
+          // 1) si el back ya manda isFavorite en el objeto:
+          const inline = !!data?.isFavorite;
+          setIsFav(inline);
+          // 2) si no viene, consulta al endpoint (tolerante a auth)
+          if (!inline && itemId) {
+            try {
+              const s = await favoritesService.isFavorite(itemId);
+              if (!cancel) setIsFav(!!s?.isFavorite);
+            } catch {
+              // Si no hay token o 403, ignoramos y dejamos en false
+            }
+          }
         }
       } catch (e) {
         console.error(e);
@@ -48,15 +69,19 @@ export default function ProductDetailPage() {
         if (!cancel) setLoading(false);
       }
     })();
-    return () => {
-      cancel = true;
-    };
-  }, [id]);
+    return () => { cancel = true; };
+  }, [routeId, itemId]);
 
+  // Imágenes
   const images = useMemo(
     () => (item?.images?.length ? item.images : item?.image ? [item.image] : []),
     [item]
   );
+
+  // Reinicia a la primera imagen si cambia el set de imágenes
+  useEffect(() => {
+    setCurrentImage(0);
+  }, [images.length]);
 
   const hasMultipleImages = images.length > 1;
 
@@ -89,19 +114,19 @@ export default function ProductDetailPage() {
       case "Préstamo":
         return "bg-amber-100 text-amber-900 ring-1 ring-amber-200";
       case "Regalo":
-        return "bg-green-100 text-green-900 ring-1 ring-blue-200";
+        return "bg-green-100 text-green-900 ring-1 ring-green-200";
       default:
         return "bg-gray-100 text-gray-900 ring-1 ring-gray-200";
     }
   };
 
-  // Función auxiliar para simplificar el estado del artículo
-  const isItemAvailable = (status) => {
-    return status === "available";
-  };
+  // Estado del artículo
+  const isItemAvailable = (status) => status === "available";
 
+  // Compartir
   const canShare =
     typeof navigator !== "undefined" && typeof navigator.share === "function";
+
   const handleShare = async () => {
     const url = typeof window !== "undefined" ? window.location.href : "";
     try {
@@ -112,6 +137,7 @@ export default function ProductDetailPage() {
     }
   };
 
+  // QR
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
@@ -120,13 +146,11 @@ export default function ProductDetailPage() {
       if (!cancelled) setQrDataUrl(data || null);
     };
     run();
-    return () => {
-      cancelled = true;
-    };
-  }, [showQR, item?.id]);
+    return () => { cancelled = true; };
+  }, [showQR, itemId]);
 
   const generarQRCode = async () => {
-    const url = `${urlbase}${item?.id}`;
+    const url = `${urlbase}${itemId}`;
     try {
       const qrBase64 = await QRCode.toDataURL(url, { width: 300, margin: 2 });
       return qrBase64;
@@ -135,6 +159,31 @@ export default function ProductDetailPage() {
       return "";
     }
   };
+
+  // Toggle favorito (optimista + tolerante a 401/403)
+  const handleToggleFavorite = useCallback(async () => {
+    if (!itemId) return;
+    const prev = isFav;
+    setIsFav(!prev); // optimismo UI
+
+    try {
+      // Si ya es favorito, intenta quitar; si no, intenta agregar
+      if (prev) {
+        await favoritesService.remove(itemId);
+      } else {
+        await favoritesService.add(itemId);
+      }
+    } catch (e) {
+      // Revertir si falla (token inválido, etc.)
+      setIsFav(prev);
+      const msg = String(e?.message || "").toLowerCase();
+      if (msg.includes("token")) {
+        console.warn("Necesitas iniciar sesión para usar favoritos.");
+      } else {
+        console.error(e);
+      }
+    }
+  }, [itemId, isFav]);
 
   if (loading || !item) {
     return <div className="container mx-auto px-4 py-8 text-center">Cargando...</div>;
@@ -213,10 +262,11 @@ export default function ProductDetailPage() {
                   key={index}
                   onClick={() => setCurrentImage(index)}
                   aria-current={currentImage === index}
-                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border transition-all duration-200 hover:shadow-sm hover:-translate-y-px ${currentImage === index
+                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border transition-all duration-200 hover:shadow-sm hover:-translate-y-px ${
+                    currentImage === index
                       ? "border-emerald-500 ring-2 ring-emerald-200"
                       : "border-gray-200"
-                    }`}
+                  }`}
                 >
                   <img
                     src={image}
@@ -247,33 +297,21 @@ export default function ProductDetailPage() {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-2">
+                    {/* ❤️ Favorito */}
                     <button
-                      className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isFav ? "ring-1 ring-emerald-200" : ""
-                        }`}
+                      type="button"
+                      className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                        isFav ? "ring-1 ring-emerald-200" : ""
+                      }`}
                       aria-pressed={isFav}
-                      onClick={async () => {
-                        try {
-                          const id = Number(params.id); // según tu ruta /producto/:id
-                          const status = await favoritesService.isFavorite(id);
-                          if (status?.isFavorite) {
-                            await favoritesService.remove(id);
-                            setIsFav(false);
-                            setFavCount((n) => Math.max(n - 1, 0));
-                          } else {
-                            await favoritesService.add(id);
-                            setIsFav(true);
-                            setFavCount((n) => n + 1);
-                          }
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
+                      aria-label={isFav ? "Quitar de favoritos" : "Agregar a favoritos"}
+                      title={isFav ? "Quitar de favoritos" : "Agregar a favoritos"}
+                      onClick={handleToggleFavorite}
                     >
-                      <Heart
-                        className={`h-5 w-5 ${isFav ? "fill-current text-emerald-600" : ""
-                          }`}
-                      />
+                      <Heart className={`h-5 w-5 ${isFav ? "fill-current text-emerald-600" : ""}`} />
                     </button>
+
+                    {/* Compartir */}
                     <button
                       onClick={handleShare}
                       className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -283,8 +321,6 @@ export default function ProductDetailPage() {
                       <Share2 className="h-5 w-5" />
                     </button>
                   </div>
-
-
                 </div>
               </div>
 
@@ -307,8 +343,6 @@ export default function ProductDetailPage() {
                   Precio sugerido por el publicador
                 </span>
               </div>
-
-
             </div>
 
             <div className="h-px w-full bg-gray-200/70 mb-6" />
@@ -354,16 +388,22 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
                 disabled={!isItemAvailable(item.status)}
-                className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm hover:shadow md:active:translate-y-[1px] ${isItemAvailable(item.status)
+                className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm hover:shadow md:active:translate-y-[1px] ${
+                  isItemAvailable(item.status)
                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                }`}
               >
                 {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
               </button>
               <button
-                /*onClick={() => setShowQR((v) => !v)}*/
-                onClick={() => setShowQR((v) => { const next = !v; if (!next) setQrDataUrl(null); return next; })}
+                onClick={() =>
+                  setShowQR((v) => {
+                    const next = !v;
+                    if (!next) setQrDataUrl(null);
+                    return next;
+                  })
+                }
                 className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="h-5 w-5" />
@@ -388,12 +428,6 @@ export default function ProductDetailPage() {
                   ) : (
                     <span className="text-sm text-gray-500">Generando QR…</span>
                   )}
-                  {/*<img
-                    src="/placeholder.svg?height=200&width=200"
-                    alt="Código QR del artículo"
-                    className="w-40 h-40"
-                    loading="lazy"
-                  />*/}
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
                   Escanea este código para compartir
@@ -441,10 +475,11 @@ export default function ProductDetailPage() {
           <button
             onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
             disabled={!isItemAvailable(item.status)}
-            className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm ${isItemAvailable(item.status)
+            className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm ${
+              isItemAvailable(item.status)
                 ? "bg-emerald-600 text-white hover:bg-emerald-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
+            }`}
           >
             {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
           </button>

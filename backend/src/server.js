@@ -6,6 +6,7 @@ import "./models/index.js";
 import express from "express";
 import path from "path";
 import fs from "fs";
+import favoritesRouter from "./routes/favorites.routes.js";
 
 // === Carpeta para archivos subidos ===
 const UPLOAD_DIR = path.join(process.cwd(), "files");
@@ -15,6 +16,7 @@ try {
 } catch (e) {
   console.error("No se pudo crear la carpeta de archivos:", e);
 }
+app.use(favoritesRouter);
 
 // Servir archivos estáticos (imágenes) en /files
 app.use("/files", express.static(UPLOAD_DIR));
