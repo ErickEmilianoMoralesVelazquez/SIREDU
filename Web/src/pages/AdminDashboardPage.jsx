@@ -154,7 +154,8 @@ export default function AdminDashboardPage() {
       showSuccess("Usuario eliminado");
       setUsers((prev) =>
         prev.filter(
-          (u) => (u.id_user || u.id) !== (userToDelete.id_user || userToDelete.id)
+          (u) =>
+            (u.id_user || u.id) !== (userToDelete.id_user || userToDelete.id)
         )
       );
     } catch (err) {
@@ -356,9 +357,9 @@ export default function AdminDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-8 flex items-center justify-between h-16">
           <div className="flex items-center space-x-3">
             <img
-              src="/vite.svg"
+              src="/SIREDU.jpeg"
               alt="Logo"
-              className="h-9 w-9 rounded-full bg-emerald-100 p-1 shadow"
+              className="h-9 w-12 rounded-full bg-emerald-100 p-1 shadow"
             />
             <span className="text-xl font-bold text-emerald-700 tracking-tight select-none">
               SIREDU Admin
@@ -370,9 +371,7 @@ export default function AdminDashboardPage() {
                 {user?.name || user?.username || "Admin"}
               </span>
               <span className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-emerald-600 text-white font-bold text-lg border-2 border-white shadow">
-                {(user?.name || user?.username || "A")
-                  .charAt(0)
-                  .toUpperCase()}
+                {(user?.name || user?.username || "A").charAt(0).toUpperCase()}
               </span>
               <svg
                 className="w-4 h-4 text-emerald-700"
@@ -551,7 +550,9 @@ export default function AdminDashboardPage() {
                 <button
                   className="px-3 py-2 rounded bg-emerald-600 text-white"
                   onClick={async () => {
-                    const blob = await adminService.getItemsByStatusReport("csv");
+                    const blob = await adminService.getItemsByStatusReport(
+                      "csv"
+                    );
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
@@ -569,7 +570,8 @@ export default function AdminDashboardPage() {
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-lg font-semibold mb-4">Actividad Reciente</h2>
               <div className="text-gray-500 text-sm">
-                Próximamente: feed real de actividad (creaciones, cambios de estado, etc.).
+                Próximamente: feed real de actividad (creaciones, cambios de
+                estado, etc.).
               </div>
             </div>
           </div>
@@ -775,7 +777,9 @@ export default function AdminDashboardPage() {
               />
               <input
                 type="password"
-                placeholder={editingUser ? "Nueva contraseña (opcional)" : "Contraseña"}
+                placeholder={
+                  editingUser ? "Nueva contraseña (opcional)" : "Contraseña"
+                }
                 value={userForm.password}
                 onChange={(e) =>
                   setUserForm((f) => ({ ...f, password: e.target.value }))
@@ -867,7 +871,9 @@ export default function AdminDashboardPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {u.email}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">{u.role}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {u.role}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
