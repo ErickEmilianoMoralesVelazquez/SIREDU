@@ -17,6 +17,7 @@ import {
 import InterestModal from "../components/products/InterestModal";
 import QRCode from "qrcode";
 import { getItemById } from "../services/items";
+import { favoritesService } from "../services/favoritesService";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -106,9 +107,9 @@ export default function ProductDetailPage() {
     try {
       if (canShare) await navigator.share({ title: item?.title, url });
       else await navigator.clipboard.writeText(url);
-         } catch (error) {
-       console.error("Error sharing:", error);
-     }
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
   };
 
   useEffect(() => {
@@ -212,11 +213,10 @@ export default function ProductDetailPage() {
                   key={index}
                   onClick={() => setCurrentImage(index)}
                   aria-current={currentImage === index}
-                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border transition-all duration-200 hover:shadow-sm hover:-translate-y-px ${
-                    currentImage === index
+                  className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border transition-all duration-200 hover:shadow-sm hover:-translate-y-px ${currentImage === index
                       ? "border-emerald-500 ring-2 ring-emerald-200"
                       : "border-gray-200"
-                  }`}
+                    }`}
                 >
                   <img
                     src={image}
@@ -245,56 +245,70 @@ export default function ProductDetailPage() {
                     {item.title}
                   </h1>
                 </div>
-                                 <div className="flex flex-col items-end gap-2">
-                   <div className="flex items-center gap-2">
-                     <button
-                       className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                         isFav ? "ring-1 ring-emerald-200" : ""
-                       }`}
-                       aria-pressed={isFav}
-                       onClick={() => setIsFav((v) => !v)}
-                     >
-                       <Heart
-                         className={`h-5 w-5 ${
-                           isFav ? "fill-current text-emerald-600" : ""
-                         }`}
-                       />
-                     </button>
-                     <button
-                       onClick={handleShare}
-                       className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                       aria-label="Compartir"
-                       title={canShare ? "Compartir" : "Copiar enlace"}
-                     >
-                       <Share2 className="h-5 w-5" />
-                     </button>
-                   </div>
-                   
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={`size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isFav ? "ring-1 ring-emerald-200" : ""
+                        }`}
+                      aria-pressed={isFav}
+                      onClick={async () => {
+                        try {
+                          const id = Number(params.id); // según tu ruta /producto/:id
+                          const status = await favoritesService.isFavorite(id);
+                          if (status?.isFavorite) {
+                            await favoritesService.remove(id);
+                            setIsFav(false);
+                            setFavCount((n) => Math.max(n - 1, 0));
+                          } else {
+                            await favoritesService.add(id);
+                            setIsFav(true);
+                            setFavCount((n) => n + 1);
+                          }
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                    >
+                      <Heart
+                        className={`h-5 w-5 ${isFav ? "fill-current text-emerald-600" : ""
+                          }`}
+                      />
+                    </button>
+                    <button
+                      onClick={handleShare}
+                      className="size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors shadow-sm grid place-items-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      aria-label="Compartir"
+                      title={canShare ? "Compartir" : "Copiar enlace"}
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </button>
+                  </div>
 
-                 </div>
+
+                </div>
               </div>
 
-                             {/* Precio destacado */}
-               <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
-                 {item.price > 0 ? (
-                   <p className="text-3xl font-extrabold text-emerald-700">
-                     {new Intl.NumberFormat("es-MX", {
-                       style: "currency",
-                       currency: "MXN",
-                       maximumFractionDigits: 2,
-                     }).format(item.price)}
-                   </p>
-                 ) : (
-                   <p className="text-2xl font-bold text-emerald-700">
-                     {item.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
-                   </p>
-                 )}
-                 <span className="text-xs text-emerald-700/70">
-                   Precio sugerido por el publicador
-                 </span>
-               </div>
-               
-                             
+              {/* Precio destacado */}
+              <div className="mt-4 inline-flex items-baseline gap-2 rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100 shadow-sm">
+                {item.price > 0 ? (
+                  <p className="text-3xl font-extrabold text-emerald-700">
+                    {new Intl.NumberFormat("es-MX", {
+                      style: "currency",
+                      currency: "MXN",
+                      maximumFractionDigits: 2,
+                    }).format(item.price)}
+                  </p>
+                ) : (
+                  <p className="text-2xl font-bold text-emerald-700">
+                    {item.type === "Préstamo" ? "Préstamo temporal" : "Gratis"}
+                  </p>
+                )}
+                <span className="text-xs text-emerald-700/70">
+                  Precio sugerido por el publicador
+                </span>
+              </div>
+
+
             </div>
 
             <div className="h-px w-full bg-gray-200/70 mb-6" />
@@ -340,17 +354,16 @@ export default function ProductDetailPage() {
               <button
                 onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
                 disabled={!isItemAvailable(item.status)}
-                className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm hover:shadow md:active:translate-y-[1px] ${
-                  isItemAvailable(item.status)
+                className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm hover:shadow md:active:translate-y-[1px] ${isItemAvailable(item.status)
                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                  }`}
               >
                 {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
               </button>
               <button
                 /*onClick={() => setShowQR((v) => !v)}*/
-                onClick={() => setShowQR((v) => {const next = !v;  if (!next) setQrDataUrl(null); return next;})}
+                onClick={() => setShowQR((v) => { const next = !v; if (!next) setQrDataUrl(null); return next; })}
                 className="flex items-center justify-center gap-2 bg-gray-100 py-3 px-4 rounded-full font-medium hover:bg-gray-200 transition-all shadow-sm hover:shadow"
               >
                 <QrCode className="h-5 w-5" />
@@ -428,11 +441,10 @@ export default function ProductDetailPage() {
           <button
             onClick={() => isItemAvailable(item.status) && setIsModalOpen(true)}
             disabled={!isItemAvailable(item.status)}
-            className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm ${
-              isItemAvailable(item.status)
+            className={`flex-1 py-3 rounded-full font-medium transition-all shadow-sm ${isItemAvailable(item.status)
                 ? "bg-emerald-600 text-white hover:bg-emerald-700"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             {isItemAvailable(item.status) ? "Estoy interesado" : "No disponible"}
           </button>

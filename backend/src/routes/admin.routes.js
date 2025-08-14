@@ -25,6 +25,14 @@ import {
   generateModerationReport
 } from "../controllers/admin.controller.js";
 
+import {
+  // ...lo que ya existe
+  getStatsHighlights,
+  getItemsByStatusReport,
+  createUser, updateUser, deleteUser,
+} from "../controllers/admin.controller.js";
+
+
 const router = Router();
 
 // Aplicar middleware de autenticación y admin a todas las rutas
@@ -52,5 +60,14 @@ router.put("/requests/:id/status", updateRequestStatus);
 // ===== RUTAS DE INFORMES =====
 router.get("/reports/activity", generateActivityReport);
 router.get("/reports/moderation", generateModerationReport);
+
+// ===== STATS/REPORTS =====
+router.get("/stats/highlights", getStatsHighlights);
+router.get("/reports/items-by-status", getItemsByStatusReport);
+
+// ===== USERS CRUD =====
+router.post("/users", createUser);
+router.put("/users/:id", updateUser);
+router.delete("/users/:id", deleteUser);
 
 export default router; 

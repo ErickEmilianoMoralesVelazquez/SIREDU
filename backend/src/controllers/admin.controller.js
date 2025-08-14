@@ -1,6 +1,8 @@
 import { User, Item, Request } from "../models/index.js";
 import { Op } from "sequelize";
 import sequelize from "../config/database.js";
+import { Favorite } from "../models/index.js";
+
 
 // ===== MODERACIÓN DE PUBLICACIONES =====
 
@@ -460,3 +462,232 @@ export const generateModerationReport = async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor" });
   }
 }; 
+
+export const getStatsHighlights = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || "10", 10);
+
+    // Destacados: top por favoritos
+    const featuredRaw = await Favorite.findAll({
+      attributes: [
+        "item_id",
+        [sequelize.fn("COUNT", sequelize.col("Favorite.id_favorite")), "favCount"],
+      ],
+      include: [
+        {
+          model: Item,
+          include: [{ model: User, attributes: ["id_user", "username", "email"] }],
+          required: true,
+        },
+      ],
+      group: ["item_id", "Item.id_item", "Item->User.id_user"],
+      order: [[sequelize.literal("favCount"), "DESC"]],
+      limit,
+    });
+
+    const featured = featuredRaw.map(r => ({
+      id_item: r.Item.id_item,
+      tittle: r.Item.tittle,
+      category: r.Item.category,
+      exchange_type: r.Item.exchange_type,
+      status: r.Item.status,
+      price: r.Item.price,
+      picture1: r.Item.picture1,
+      favCount: parseInt(r.get("favCount"), 10) || 0,
+      user: {
+        id_user: r.Item.User.id_user,
+        username: r.Item.User.username,
+        email: r.Item.User.email,
+      },
+    }));
+
+    // Recientes
+    const recent = await Item.findAll({
+      include: [{ model: User, attributes: ["id_user", "username", "email"] }],
+      order: [["created_at", "DESC"]],
+      limit,
+    });
+
+    // Más solicitados: top por requests
+    const requestedRaw = await Request.findAll({
+      attributes: [
+        "item_id",
+        [sequelize.fn("COUNT", sequelize.col("Request.id_request")), "reqCount"],
+      ],
+      include: [
+        {
+          model: Item,
+          include: [{ model: User, attributes: ["id_user", "username", "email"] }],
+          required: true,
+        },
+      ],
+      group: ["item_id", "Item.id_item", "Item->User.id_user"],
+      order: [[sequelize.literal("reqCount"), "DESC"]],
+      limit,
+    });
+
+    const mostRequested = requestedRaw.map(r => ({
+      id_item: r.Item.id_item,
+      tittle: r.Item.tittle,
+      category: r.Item.category,
+      exchange_type: r.Item.exchange_type,
+      status: r.Item.status,
+      price: r.Item.price,
+      picture1: r.Item.picture1,
+      requestCount: parseInt(r.get("reqCount"), 10) || 0,
+      user: {
+        id_user: r.Item.User.id_user,
+        username: r.Item.User.username,
+        email: r.Item.User.email,
+      },
+    }));
+
+    return res.json({ featured, recent, mostRequested });
+  } catch (error) {
+    console.error("Error en getStatsHighlights:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+
+// GET /admin/reports/items-by-status?format=json|csv
+export const getItemsByStatusReport = async (req, res) => {
+  try {
+    const rows = await Item.findAll({
+      attributes: [
+        "status",
+        [sequelize.fn("COUNT", sequelize.col("id_item")), "count"]
+      ],
+      group: ["status"]
+    });
+
+    const counts = Object.fromEntries(rows.map(r => [r.status, parseInt(r.get("count"), 10) || 0]));
+
+    // Mapeo de nombres finales
+    const report = {
+      pending: counts.pending || 0,
+      delivered: counts.sold || 0,      // "entregado" == sold
+      reserved: counts.reserved || 0,
+      available: counts.available || 0,
+      approved: counts.approved || 0,
+    };
+
+    const format = (req.query.format || "json").toLowerCase();
+
+    if (format === "csv") {
+      const csv = [
+        "status,count",
+        `pending,${report.pending}`,
+        `delivered,${report.delivered}`,
+        `reserved,${report.reserved}`,
+        `available,${report.available}`,
+        `approved,${report.approved}`,
+      ].join("\n");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="items-by-status.csv"`);
+      return res.send(csv);
+    }
+
+    return res.json(report);
+  } catch (error) {
+    console.error("Error en getItemsByStatusReport:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+// GET /admin/reports/items-by-category?format=json|csv
+export const getItemsByCategoryReport = async (req, res) => {
+  try {
+    const rows = await Item.findAll({
+      attributes: [
+        "category",
+        [sequelize.fn("COUNT", sequelize.col("id_item")), "count"]
+      ],
+      group: ["category"]
+    });
+
+    const counts = Object.fromEntries(rows.map(r => [r.category, parseInt(r.get("count"), 10) || 0]));
+
+    // Mapeo de nombres finales
+    const report = {
+      electronics: counts.electronics || 0,
+      furniture: counts.furniture || 0,
+      clothing: counts.clothing || 0,
+      books: counts.books || 0,
+      other: counts.other || 0,
+    };
+
+    const format = (req.query.format || "json").toLowerCase();
+
+    if (format === "csv") {
+      const csv = [
+        "category,count",
+        `electronics,${report.electronics}`,
+        `furniture,${report.furniture}`,
+        `clothing,${report.clothing}`,
+        `books,${report.books}`,
+        `other,${report.other}`,
+      ].join("\n");
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="items-by-category.csv"`);
+      return res.send(csv);
+    }
+
+    return res.json(report);
+  } catch (error) {
+    console.error("Error en getItemsByCategoryReport:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+}
+
+// POST /admin/users
+export const createUser = async (req, res) => {
+  try {
+    const { username, email, password, role = "user", status = "active" } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: "username, email y password son requeridos" });
+    }
+    const exists = await User.findOne({ where: { email } });
+    if (exists) return res.status(409).json({ error: "Email ya registrado" });
+    const user = await User.create({ username, email, password, role, status, created_at: new Date() });
+    res.status(201).json(user);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+// PUT /admin/users/:id
+export const updateUser = async (req, res) => {
+  try {
+    const { username, email, role, status, password } = req.body;
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    await user.update({
+      username: username ?? user.username,
+      email: email ?? user.email,
+      role: role ?? user.role,
+      status: status ?? user.status,
+      ...(password ? { password } : {})
+    });
+    res.json(user);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+// DELETE /admin/users/:id
+export const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+    await user.destroy();
+    res.json({ success: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};

@@ -5,6 +5,8 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import ProductCard from "../components/products/ProductCard";
 import { listItems, getCategories, getTypes } from "../services/items";
+import { favoritesService } from "../services/favoritesService";
+
 
 export default function ProductsPage() {
   const [searchParams] = useSearchParams();
@@ -34,6 +36,30 @@ export default function ProductsPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const handleToggleFavorite = async (product) => {
+    try {
+      // modelo de ui puede ser {id} o {id_item}; normalizamos:
+      const itemId = product.id_item || product.id || product.itemId;
+      if (!itemId) return;
+      // Consulta estado actual opcionalmente (o confía en flag local)
+      const status = await favoritesService.isFavorite(itemId);
+      if (status?.isFavorite) {
+        await favoritesService.remove(itemId);
+        setItems(prev => prev.map(p =>
+          (p.id_item || p.id) === itemId ? { ...p, isFavorite: false, favoriteCount: Math.max((p.favoriteCount || 1) - 1, 0) } : p
+        ));
+      } else {
+        await favoritesService.add(itemId);
+        setItems(prev => prev.map(p =>
+          (p.id_item || p.id) === itemId ? { ...p, isFavorite: true, favoriteCount: (p.favoriteCount || 0) + 1 } : p
+        ));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
 
   // Sincroniza querystring → filtros (q, category, type, sort, page)
   useEffect(() => {
@@ -173,7 +199,14 @@ export default function ProductsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {items.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id_item || product.id}
+                  product={{
+                    ...product,
+                    id: product.id_item || product.id,
+                  }}
+                  onToggleFavorite={handleToggleFavorite}
+                />
               ))}
             </div>
           )}

@@ -2,7 +2,7 @@ import { apiService } from './api.js';
 
 class AdminService {
   // ===== ESTADÍSTICAS GENERALES =====
-  
+
   // Obtener estadísticas generales para el dashboard
   async getGeneralStats() {
     try {
@@ -41,13 +41,42 @@ class AdminService {
     }
   }
 
+  // Highlights (destacados/recientes/más solicitados)
+  async getHighlights(limit = 10) {
+    return apiService.get(`/admin/stats/highlights?limit=${limit}`);
+  }
+
+  // Reporte por estado (JSON o CSV)
+  async getItemsByStatusReport(format = "json") {
+    if (format === "csv") {
+      const resp = await fetch(`${apiService.baseURL}/admin/reports/items-by-status?format=csv`, {
+        headers: { ...(localStorage.getItem("token") ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {}) },
+      });
+      const blob = await resp.blob();
+      return blob;
+    } else {
+      return apiService.get(`/admin/reports/items-by-status?format=json`);
+    }
+  }
+
+  // Estadísticas por rango (para actividad diaria)
+  async getStatsByDateRange(startDate, endDate) {
+    return apiService.get(`/admin/stats/date-range?startDate=${startDate}&endDate=${endDate}`);
+  }
+
+  async createUser(payload) { return apiService.post(`/admin/users`, payload); }
+  async updateUser(id, payload) { return apiService.put(`/admin/users/${id}`, payload); }
+  async deleteUser(id) { return apiService.delete(`/admin/users/${id}`); }
+
+
+
   // ===== GESTIÓN DE ARTÍCULOS =====
-  
+
   // Obtener todos los artículos con filtros y paginación
   async getItems(params = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append('page', params.page);
       if (params.limit) queryParams.append('limit', params.limit);
       if (params.status) queryParams.append('status', params.status);
@@ -56,7 +85,7 @@ class AdminService {
 
       const endpoint = `/admin/items${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await apiService.get(endpoint);
-      
+
       return {
         items: response.items || [],
         total: response.total || 0,
@@ -111,12 +140,12 @@ class AdminService {
   }
 
   // ===== GESTIÓN DE USUARIOS =====
-  
+
   // Obtener todos los usuarios
   async getUsers(params = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append('page', params.page);
       if (params.limit) queryParams.append('limit', params.limit);
       if (params.status) queryParams.append('status', params.status);
@@ -125,7 +154,7 @@ class AdminService {
 
       const endpoint = `/admin/users${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await apiService.get(endpoint);
-      
+
       return {
         users: response.users || [],
         total: response.total || 0,
@@ -155,12 +184,12 @@ class AdminService {
   }
 
   // ===== GESTIÓN DE SOLICITUDES =====
-  
+
   // Obtener todas las solicitudes
   async getRequests(params = {}) {
     try {
       const queryParams = new URLSearchParams();
-      
+
       if (params.page) queryParams.append('page', params.page);
       if (params.limit) queryParams.append('limit', params.limit);
       if (params.status) queryParams.append('status', params.status);
@@ -168,7 +197,7 @@ class AdminService {
 
       const endpoint = `/admin/requests${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       const response = await apiService.get(endpoint);
-      
+
       return {
         requests: response.requests || [],
         total: response.total || 0,
@@ -201,7 +230,7 @@ class AdminService {
   }
 
   // ===== INFORMES =====
-  
+
   // Generar informe de actividad
   async generateActivityReport(startDate, endDate, format = 'json') {
     try {
@@ -236,7 +265,7 @@ class AdminService {
   }
 
   // ===== UTILIDADES =====
-  
+
   // Convertir datos del backend al formato esperado por el frontend
   transformItemData(item) {
     return {
@@ -348,5 +377,7 @@ class AdminService {
     };
   }
 }
+
+
 
 export const adminService = new AdminService(); 
