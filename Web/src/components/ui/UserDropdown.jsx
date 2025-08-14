@@ -155,7 +155,7 @@ const UserDropdown = ({ user, onLogout }) => {
               </Link>
 
               {/* Settings */}
-              <Link
+              {/* <Link
                 to="/configuracion"
                 className="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-900 transition-colors"
                 role="menuitem"
@@ -163,7 +163,7 @@ const UserDropdown = ({ user, onLogout }) => {
               >
                 <Settings className="mr-3 h-4 w-4 text-gray-400 group-hover:text-emerald-500" />
                 Configuración
-              </Link>
+              </Link> */}
             </div>
 
             {/* Divider */}
